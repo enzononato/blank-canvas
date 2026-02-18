@@ -27,7 +27,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Plus, Minus, Trash2, CheckCircle, Camera, Package, X, AlertCircle, Check, CalendarIcon, LogOut, FileText, PlusCircle, Phone, Loader2 } from 'lucide-react';
+import { Plus, Minus, Trash2, CheckCircle, Camera, Package, X, AlertCircle, Check, CalendarIcon, LogOut, FileText, PlusCircle, Phone, Loader2, MessageCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Protocolo, Produto, FotosProtocolo } from '@/types';
 import { format } from 'date-fns';
@@ -186,6 +186,26 @@ export default function MotoristaPortal() {
   const [isCompressing, setIsCompressing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
+
+  // Estado para guardar dados do protocolo criado (usados na tela de sucesso)
+  const [fotosProtocoloCriado, setFotosProtocoloCriado] = useState<{
+    fotoMotoristaPdv: string;
+    fotoLoteProduto: string;
+    fotoAvaria?: string;
+  } | null>(null);
+  const [dataProtocoloCriado, setDataProtocoloCriado] = useState('');
+  const [horaProtocoloCriado, setHoraProtocoloCriado] = useState('');
+  const [produtosProtocoloCriado, setProdutosProtocoloCriado] = useState<Array<{
+    codigo: string; nome: string; unidade: string; quantidade: number; validade: string;
+  }>>([]);
+  const [tipoReposicaoCriado, setTipoReposicaoCriado] = useState('');
+  const [causaCriada, setCausaCriada] = useState('');
+  const [mapaCriado, setMapaCriado] = useState('');
+  const [codigoPdvCriado, setCodigoPdvCriado] = useState('');
+  const [notaFiscalCriada, setNotaFiscalCriada] = useState('');
+  const [whatsappContatoCriado, setWhatsappContatoCriado] = useState('');
+  const [emailContatoCriado, setEmailContatoCriado] = useState('');
+  const [observacaoCriada, setObservacaoCriada] = useState('');
 
   // Touched state for validation
   const [touched, setTouched] = useState<TouchedFields>({
@@ -434,6 +454,18 @@ export default function MotoristaPortal() {
     setFotoAvaria(null);
     setProtocoloCriado(false);
     setNumeroProtocolo('');
+    setFotosProtocoloCriado(null);
+    setDataProtocoloCriado('');
+    setHoraProtocoloCriado('');
+    setProdutosProtocoloCriado([]);
+    setTipoReposicaoCriado('');
+    setCausaCriada('');
+    setMapaCriado('');
+    setCodigoPdvCriado('');
+    setNotaFiscalCriada('');
+    setWhatsappContatoCriado('');
+    setEmailContatoCriado('');
+    setObservacaoCriada('');
     setTouched({
       mapa: false,
       codigoPdv: false,
@@ -646,6 +678,23 @@ export default function MotoristaPortal() {
 
       await addProtocolo(novoProtocolo);
       setNumeroProtocolo(numero);
+      // Salvar dados do protocolo para uso na tela de sucesso (botão WhatsApp)
+      setFotosProtocoloCriado({
+        fotoMotoristaPdv: fotosUrls.fotoMotoristaPdv || '',
+        fotoLoteProduto: fotosUrls.fotoLoteProduto || '',
+        fotoAvaria: fotosUrls.fotoAvaria || undefined
+      });
+      setDataProtocoloCriado(format(now, 'dd/MM/yyyy'));
+      setHoraProtocoloCriado(format(now, 'HH:mm:ss'));
+      setProdutosProtocoloCriado(produtosFormatados);
+      setTipoReposicaoCriado(tipoReposicao.toUpperCase());
+      setCausaCriada(causa);
+      setMapaCriado(mapa);
+      setCodigoPdvCriado(codigoPdv);
+      setNotaFiscalCriada(notaFiscal);
+      setWhatsappContatoCriado(whatsappContato);
+      setEmailContatoCriado(emailContato);
+      setObservacaoCriada(observacao);
       setProtocoloCriado(true);
       toast({
         title: 'Protocolo criado!',
@@ -850,6 +899,56 @@ export default function MotoristaPortal() {
     );
   };
 
+  const buildWhatsAppLink = () => {
+    const numeroLimpo = whatsappContatoCriado.replace(/\D/g, '');
+    const telefone = numeroLimpo.startsWith('55') ? numeroLimpo : `55${numeroLimpo}`;
+
+    const mensagem = [
+      `🆕 *NOVO PROTOCOLO ABERTO*`,
+      ``,
+      `🆔 *Protocolo:* ${numeroProtocolo}`,
+      ``,
+      `🏷️ *Tipo:* ${tipoReposicaoCriado}`,
+      ``,
+      `⚠️ *Causa:* ${causaCriada}`,
+      ``,
+      `📆 *Data:* ${dataProtocoloCriado} às ${horaProtocoloCriado}`,
+      ``,
+      `📋 *MAPA:* ${mapaCriado}`,
+      ``,
+      `📌 *Cód. PDV:* ${codigoPdvCriado}`,
+      ``,
+      `📦 *NF:* ${notaFiscalCriada}`,
+      ``,
+      `👤 *Motorista:* ${motorista.nome}`,
+      ``,
+      `🏭 *Unidade:* ${motorista.unidade || ''}`,
+      ``,
+      `📞 ${whatsappContatoCriado}${emailContatoCriado ? '\n📧 ' + emailContatoCriado : ''}`,
+      ``,
+      `📦 *ITENS SOLICITADOS:*`,
+      ``,
+      produtosProtocoloCriado.map(p =>
+        `▪️ *${p.nome}*\n   Cód: ${p.codigo} | Qtd: ${p.quantidade} ${p.unidade}${p.validade ? '\n   📅 Validade: ' + p.validade : ''}`
+      ).join('\n\n'),
+      ``,
+      `📝 *Obs:* ${observacaoCriada || 'Nenhuma'}`,
+      ``,
+      `📸 *Foto Motorista:*`,
+      ``,
+      fotosProtocoloCriado?.fotoMotoristaPdv || '',
+      ``,
+      `📦 *Foto Lote:*`,
+      ``,
+      fotosProtocoloCriado?.fotoLoteProduto || '',
+      ...(fotosProtocoloCriado?.fotoAvaria ? [``, `🛠️ *Foto Avaria:*`, ``, fotosProtocoloCriado.fotoAvaria] : []),
+      ``,
+      `_- Reposição Revalle_`
+    ].join('\n');
+
+    return `https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`;
+  };
+
   if (protocoloCriado) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 flex items-center justify-center p-4 safe-area-inset">
@@ -871,6 +970,19 @@ export default function MotoristaPortal() {
               <p className="text-lg font-mono font-bold text-primary">{numeroProtocolo}</p>
             </div>
             <div className="space-y-3">
+              {fotosProtocoloCriado && whatsappContatoCriado && (
+                <a
+                  href={buildWhatsAppLink()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full block"
+                >
+                  <Button className="w-full h-12 text-base bg-green-500 hover:bg-green-600 text-white">
+                    <MessageCircle className="mr-2 h-5 w-5" />
+                    Enviar no WhatsApp do Cliente
+                  </Button>
+                </a>
+              )}
               <Button onClick={resetForm} className="w-full h-12 text-base">
                 <Plus className="mr-2 h-5 w-5" />
                 Abrir Novo Protocolo
