@@ -903,25 +903,25 @@ export default function MotoristaPortal() {
     const numeroLimpo = whatsappContatoCriado.replace(/\D/g, '');
     const telefone = numeroLimpo.startsWith('55') ? numeroLimpo : `55${numeroLimpo}`;
 
-    // Emojis via Unicode escape para evitar corrupção de encoding
+    // Apenas emojis BMP (Basic Multilingual Plane, U+0000–U+FFFF) para máxima compatibilidade
     const e = {
-      novo:      '\u{1F195}', // 🆕
-      id:        '\u{1F194}', // 🆔
-      tipo:      '\u{1F3F7}\uFE0F', // 🏷️
-      aviso:     '\u26A0\uFE0F', // ⚠️
-      data:      '\u{1F4C6}', // 📆
-      mapa:      '\u{1F4CB}', // 📋
-      pin:       '\u{1F4CC}', // 📌
-      caixa:     '\u{1F4E6}', // 📦
-      pessoa:    '\u{1F464}', // 👤
-      fabrica:   '\u{1F3ED}', // 🏭
-      tel:       '\u{1F4DE}', // 📞
-      email:     '\u{1F4E7}', // 📧
-      foto:      '\u{1F4F8}', // 📸
-      ferramenta:'\u{1F6E0}\uFE0F', // 🛠️
-      nota:      '\u{1F4DD}', // 📝
-      cal:       '\u{1F4C5}', // 📅
-      ponto:     '\u25AA\uFE0F', // ▪️
+      novo:       '\u2705',        // ✅
+      id:         '\u2139',        // ℹ
+      tipo:       '\u25B6\uFE0F',  // ▶️
+      aviso:      '\u26A0\uFE0F',  // ⚠️
+      data:       '\u25C6',        // ◆
+      mapa:       '\u25BA',        // ►
+      pin:        '\u25C6',        // ◆
+      caixa:      '\u25A0',        // ■
+      pessoa:     '\u25BA',        // ►
+      fabrica:    '\u25BA',        // ►
+      tel:        '\u260E',        // ☎
+      email:      '\u2709',        // ✉
+      foto:       '\u270E',        // ✎
+      ferramenta: '\u2699\uFE0F',  // ⚙️
+      nota:       '\u270F',        // ✏
+      cal:        '\u25C6',        // ◆
+      ponto:      '\u25AA\uFE0F',  // ▪️
     };
 
     const mensagem = [
