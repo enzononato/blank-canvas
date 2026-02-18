@@ -483,6 +483,16 @@ export function ProtocoloDetails({
     
     try {
       await onUpdateProtocolo(protocoloAtualizado);
+      const novaValidacao = !protocolo.validacao;
+      await registrarLog({
+        acao: novaValidacao ? 'validacao' : 'edicao',
+        tabela: 'protocolos',
+        registro_id: protocolo.id,
+        registro_dados: { numero: protocolo.numero, validacao: novaValidacao },
+        usuario_nome: user?.nome || '',
+        usuario_role: user?.nivel,
+        usuario_unidade: user?.unidade,
+      });
       toast.success(protocolo.validacao ? 'Validação removida!' : 'Protocolo validado!');
     } catch (error) {
       console.error('Erro ao atualizar validação:', error);

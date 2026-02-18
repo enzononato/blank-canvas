@@ -29,6 +29,7 @@ import { toast } from 'sonner';
 import { differenceInDays, parseISO, format, isAfter, isBefore, parse, isToday } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUnidadesDB } from '@/hooks/useUnidadesDB';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import CreateProtocoloModal from '@/components/CreateProtocoloModal';
 
 // Função para extrair data de encerramento do log
@@ -71,6 +72,7 @@ export default function Protocolos() {
   const { canValidate, canLaunch, isAdmin, isDistribuicao, isConferente, isControle, user } = useAuth();
   const { unidades } = useUnidadesDB();
   const { protocolos, addProtocolo, updateProtocolo, deleteProtocolo, isLoading } = useProtocolos();
+  const { registrarLog } = useAuditLog();
   
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<string>('aberto');
@@ -259,6 +261,15 @@ export default function Protocolos() {
           status: protocolo.status === 'encerrado' ? protocolo.status : newStatus,
           observacoesLog: [...(protocolo.observacoesLog || []), logEntry]
         });
+        await registrarLog({
+          acao: newLancado ? 'lancamento' : 'edicao',
+          tabela: 'protocolos',
+          registro_id: protocolo.id,
+          registro_dados: { numero: protocolo.numero, lancado: newLancado },
+          usuario_nome: user?.nome || '',
+          usuario_role: user?.nivel,
+          usuario_unidade: user?.unidade,
+        });
         toast.success('Status de lançamento atualizado!');
       } catch (error) {
         console.error('Erro ao atualizar lançamento:', error);
@@ -286,6 +297,15 @@ export default function Protocolos() {
           validacao: newValidacao, 
           status: protocolo.status === 'encerrado' ? protocolo.status : newStatus,
           observacoesLog: [...(protocolo.observacoesLog || []), logEntry]
+        });
+        await registrarLog({
+          acao: newValidacao ? 'validacao' : 'edicao',
+          tabela: 'protocolos',
+          registro_id: protocolo.id,
+          registro_dados: { numero: protocolo.numero, validacao: newValidacao },
+          usuario_nome: user?.nome || '',
+          usuario_role: user?.nivel,
+          usuario_unidade: user?.unidade,
         });
         toast.success('Validação atualizada!');
       } catch (error) {
