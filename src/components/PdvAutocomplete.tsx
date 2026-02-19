@@ -73,8 +73,9 @@ export function PdvAutocomplete({
 
   const handleBlur = () => {
     setTimeout(() => {
+      setIsOpen(false);
       onBlur?.();
-    }, 200);
+    }, 300);
   };
 
   return (
@@ -87,7 +88,7 @@ export function PdvAutocomplete({
           ref={inputRef}
           value={inputValue}
           onChange={handleInputChange}
-          onFocus={() => setIsOpen(true)}
+          onFocus={() => inputValue.length > 0 && setIsOpen(true)}
           onBlur={handleBlur}
           placeholder={placeholder}
           className={cn('pl-9 pr-10', className)}
