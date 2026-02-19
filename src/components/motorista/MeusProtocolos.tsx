@@ -88,8 +88,12 @@ const buildMensagemProtocolo = (protocolo: ProtocoloSimples, motoristaInfo: { no
   return linhas.filter(l => l !== null).join('\n');
 };
 
+const getTelefoneCliente = (protocolo: ProtocoloSimples): string => {
+  return protocolo.cliente_telefone || protocolo.contato_whatsapp || '';
+};
+
 const buildWhatsAppLinkProtocolo = (protocolo: ProtocoloSimples, motoristaInfo: { nome: string; unidade?: string | null }): string => {
-  const numeroLimpo = (protocolo.cliente_telefone || '').replace(/\D/g, '');
+  const numeroLimpo = getTelefoneCliente(protocolo).replace(/\D/g, '');
   const telefone = numeroLimpo.startsWith('55') ? numeroLimpo : `55${numeroLimpo}`;
   return `https://wa.me/${telefone}?text=${encodeURIComponent(buildMensagemProtocolo(protocolo, motoristaInfo))}`;
 };
@@ -422,7 +426,7 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
                 {/* Botões de ação - WhatsApp e Copiar mensagem */}
                 {(protocolo.status === 'aberto' || protocolo.status === 'em_andamento') && (
                   <div className="pt-2 mt-2 border-t border-border space-y-2">
-                    {protocolo.cliente_telefone ? (
+                    {getTelefoneCliente(protocolo) ? (
                       <Button
                         variant="default"
                         size="sm"
