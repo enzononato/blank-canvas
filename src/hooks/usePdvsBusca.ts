@@ -39,7 +39,8 @@ export function usePdvsBusca(termo: string, unidade: string) {
 
   useEffect(() => {
     const buscarPdvs = async () => {
-      if (termo.length < 2 || !unidade) {
+      const termoNumerico = termo.length === 1 && !isNaN(Number(termo));
+      if ((termo.length < 1) || (termo.length < 2 && !termoNumerico) || !unidade) {
         setPdvs([]);
         return;
       }
@@ -53,10 +54,17 @@ export function usePdvsBusca(termo: string, unidade: string) {
           .select('codigo, nome, bairro, cidade, endereco')
           .eq('unidade', unidadeCodigo)
           .or(`codigo.ilike.%${termo}%,nome.ilike.%${termo}%`)
-          .limit(10);
+          .limit(20);
 
         if (error) throw error;
-        setPdvs(data || []);
+
+        const sorted = (data || []).sort((a, b) => {
+          const numA = parseInt(a.codigo, 10);
+          const numB = parseInt(b.codigo, 10);
+          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+          return a.codigo.localeCompare(b.codigo);
+        });
+        setPdvs(sorted);
       } catch (error) {
         console.error('Erro ao buscar PDVs:', error);
         setPdvs([]);

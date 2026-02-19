@@ -136,7 +136,7 @@ export function PdvAutocomplete({
         </div>
       )}
 
-      {isOpen && inputValue.length >= 2 && pdvs.length === 0 && !isLoading && (
+      {isOpen && (inputValue.length >= 2 || (inputValue.length === 1 && !isNaN(Number(inputValue)))) && pdvs.length === 0 && !isLoading && (
         <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg p-3 text-center text-sm text-muted-foreground">
           Nenhum PDV encontrado para "{inputValue}"
         </div>
