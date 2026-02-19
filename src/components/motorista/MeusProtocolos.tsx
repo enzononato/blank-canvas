@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FileText, Clock, CheckCircle, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Package, Plus, XCircle, MessageSquare } from 'lucide-react';
+import { FileText, Clock, CheckCircle, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Package, Plus, XCircle, MessageSquare, MessageCircle, Copy, Check } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Motorista, Produto, ObservacaoLog, FotosProtocolo } from '@/types';
@@ -40,11 +40,103 @@ interface ProtocoloSimples {
   contato_email: string | null;
   cliente_telefone: string | null;
   fotos_protocolo: unknown;
+  mensagem_encerramento: string | null;
+  foto_nota_fiscal_encerramento: string | null;
 }
 
 // Verificar se protocolo foi reaberto
 const foiReaberto = (observacoesLog?: ObservacaoLog[]): boolean => {
   return !!observacoesLog?.some(log => log.acao === 'Reabriu o protocolo');
+};
+
+// Constrói a mensagem de texto para o protocolo
+const buildMensagemProtocolo = (protocolo: ProtocoloSimples, motoristaInfo: { nome: string; unidade?: string | null }): string => {
+  const fotos = protocolo.fotos_protocolo as Record<string, string> | null;
+  const produtos = Array.isArray(protocolo.produtos) ? protocolo.produtos as Produto[] : [];
+
+  const linhas = [
+    `*PROTOCOLO ABERTO*`,
+    ``,
+    `*Protocolo:* ${protocolo.numero}`,
+    ``,
+    protocolo.tipo_reposicao ? `*Tipo:* ${protocolo.tipo_reposicao}` : null,
+    ``,
+    protocolo.causa ? `*Causa:* ${protocolo.causa}` : null,
+    ``,
+    `*Data:* ${protocolo.data} \u00E0s ${protocolo.hora}`,
+    protocolo.mapa ? `\n*MAPA:* ${protocolo.mapa}` : null,
+    protocolo.codigo_pdv ? `\n*C\u00F3d. PDV:* ${protocolo.codigo_pdv}` : null,
+    protocolo.nota_fiscal ? `\n*NF:* ${protocolo.nota_fiscal}` : null,
+    ``,
+    `*Motorista:* ${motoristaInfo.nome}`,
+    motoristaInfo.unidade ? `*Unidade:* ${motoristaInfo.unidade}` : null,
+    ``,
+    protocolo.contato_whatsapp || protocolo.contato_email
+      ? `${protocolo.contato_whatsapp || ''}${protocolo.contato_email ? '\n' + protocolo.contato_email : ''}`
+      : null,
+    produtos.length > 0
+      ? [`\n*ITENS SOLICITADOS:*`, ``, ...produtos.map(p =>
+          `- *${p.nome}*\n   C\u00F3d: ${p.codigo} | Qtd: ${p.quantidade} ${p.unidade}${p.validade ? '\n   Validade: ' + p.validade : ''}`
+        )].join('\n')
+      : null,
+    protocolo.observacao_geral ? `\n*Obs:* ${protocolo.observacao_geral}` : null,
+    fotos?.fotoMotoristaPdv ? `\n*Foto Motorista:*\n${fotos.fotoMotoristaPdv}` : null,
+    fotos?.fotoLoteProduto ? `\n*Foto Lote:*\n${fotos.fotoLoteProduto}` : null,
+    fotos?.fotoAvaria ? `\n*Foto Avaria:*\n${fotos.fotoAvaria}` : null,
+    ``,
+    `_- Reposi\u00E7\u00E3o Revalle_`,
+  ];
+
+  return linhas.filter(l => l !== null).join('\n');
+};
+
+const getTelefoneCliente = (protocolo: ProtocoloSimples): string => {
+  return protocolo.cliente_telefone || protocolo.contato_whatsapp || '';
+};
+
+const buildWhatsAppLinkProtocolo = (protocolo: ProtocoloSimples, motoristaInfo: { nome: string; unidade?: string | null }): string => {
+  const numeroLimpo = getTelefoneCliente(protocolo).replace(/\D/g, '');
+  const telefone = numeroLimpo.startsWith('55') ? numeroLimpo : `55${numeroLimpo}`;
+  return `https://wa.me/${telefone}?text=${encodeURIComponent(buildMensagemProtocolo(protocolo, motoristaInfo))}`;
+};
+
+const buildMensagemEncerramento = (protocolo: ProtocoloSimples, motoristaInfo: { nome: string; unidade?: string | null }): string => {
+  const produtos = Array.isArray(protocolo.produtos) ? protocolo.produtos as Produto[] : [];
+
+  const linhas = [
+    `*PROTOCOLO ENCERRADO*`,
+    ``,
+    `*Protocolo:* ${protocolo.numero}`,
+    `*Status:* Encerrado com sucesso`,
+    `*Data:* ${protocolo.data} as ${protocolo.hora}`,
+    protocolo.tipo_reposicao ? `*Tipo:* ${protocolo.tipo_reposicao}` : null,
+    protocolo.causa ? `*Causa:* ${protocolo.causa}` : null,
+    protocolo.mapa ? `*MAPA:* ${protocolo.mapa}` : null,
+    protocolo.codigo_pdv ? `*Cod. PDV:* ${protocolo.codigo_pdv}` : null,
+    protocolo.foto_nota_fiscal_encerramento ? `*Assinatura do canhoto:* ${protocolo.foto_nota_fiscal_encerramento}` : null,
+    `*Motorista:* ${motoristaInfo.nome}`,
+    motoristaInfo.unidade ? `*Unidade:* ${motoristaInfo.unidade}` : null,
+    protocolo.contato_whatsapp ? protocolo.contato_whatsapp : null,
+    protocolo.contato_email ? protocolo.contato_email : null,
+    ``,
+    produtos.length > 0
+      ? [`*ITENS CONFERIDOS:*`, ``, ...produtos.map(p =>
+          `- *${p.nome}*\n   Cod: ${p.codigo} | Qtd: ${p.quantidade} ${p.unidade}${p.validade ? '\n   Validade: ' + p.validade : ''}`
+        )].join('\n')
+      : null,
+    ``,
+    `*Mensagem Final:* ${protocolo.mensagem_encerramento || 'Nenhuma'}`,
+    ``,
+    `_- Reposicao Revalle_`,
+  ];
+
+  return linhas.filter(l => l !== null).join('\n');
+};
+
+const buildWhatsAppLinkEncerramento = (protocolo: ProtocoloSimples, motoristaInfo: { nome: string; unidade?: string | null }): string => {
+  const numeroLimpo = getTelefoneCliente(protocolo).replace(/\D/g, '');
+  const telefone = numeroLimpo.startsWith('55') ? numeroLimpo : `55${numeroLimpo}`;
+  return `https://wa.me/${telefone}?text=${encodeURIComponent(buildMensagemEncerramento(protocolo, motoristaInfo))}`;
 };
 
 export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
@@ -55,11 +147,29 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
   const [filtroStatus, setFiltroStatus] = useState<'abertos' | 'em_andamento' | 'encerrados'>('abertos');
   const [contadores, setContadores] = useState({ abertos: 0, em_andamento: 0, encerrados: 0 });
   const [loadingContadores, setLoadingContadores] = useState(true);
+  const [copiadoId, setCopiadoId] = useState<string | null>(null);
+  const [copiadoIdEncerramento, setCopiadoIdEncerramento] = useState<string | null>(null);
   
   // Modal states
   const [showBuscaPdv, setShowBuscaPdv] = useState(false);
   const [showEncerrarModal, setShowEncerrarModal] = useState(false);
   const [protocoloParaEncerrar, setProtocoloParaEncerrar] = useState<ProtocoloSimples | null>(null);
+
+  const handleCopiarMensagem = (protocolo: ProtocoloSimples) => {
+    const texto = buildMensagemProtocolo(protocolo, { nome: motorista.nome, unidade: motorista.unidade });
+    navigator.clipboard.writeText(texto).then(() => {
+      setCopiadoId(protocolo.id);
+      setTimeout(() => setCopiadoId(null), 2500);
+    });
+  };
+
+  const handleCopiarMensagemEncerramento = (protocolo: ProtocoloSimples) => {
+    const texto = buildMensagemEncerramento(protocolo, { nome: motorista.nome, unidade: motorista.unidade });
+    navigator.clipboard.writeText(texto).then(() => {
+      setCopiadoIdEncerramento(protocolo.id);
+      setTimeout(() => setCopiadoIdEncerramento(null), 2500);
+    });
+  };
 
   // Buscar contadores de todos os status
   const fetchContadores = async () => {
@@ -105,7 +215,7 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
     try {
       let query = supabase
         .from('protocolos')
-        .select('id, numero, data, hora, status, tipo_reposicao, causa, codigo_pdv, nota_fiscal, produtos, created_at, observacoes_log, mapa, motorista_nome, motorista_codigo, motorista_whatsapp, motorista_email, motorista_unidade, observacao_geral, contato_whatsapp, contato_email, cliente_telefone, fotos_protocolo')
+        .select('id, numero, data, hora, status, tipo_reposicao, causa, codigo_pdv, nota_fiscal, produtos, created_at, observacoes_log, mapa, motorista_nome, motorista_codigo, motorista_whatsapp, motorista_email, motorista_unidade, observacao_geral, contato_whatsapp, contato_email, cliente_telefone, fotos_protocolo, mensagem_encerramento, foto_nota_fiscal_encerramento')
         .eq('motorista_codigo', motorista.codigo)
         .or('oculto.is.null,oculto.eq.false');
       
@@ -360,6 +470,122 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* Botões de ação - WhatsApp e Copiar mensagem */}
+                {(protocolo.status === 'aberto' || protocolo.status === 'em_andamento') && (
+                  <div className="pt-2 mt-2 border-t border-border space-y-2">
+                    {getTelefoneCliente(protocolo) ? (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="w-full"
+                        style={{ backgroundColor: '#22c55e', color: '#fff' }}
+                        onClick={(e) => e.stopPropagation()}
+                        asChild
+                      >
+                        <a
+                          href={buildWhatsAppLinkProtocolo(protocolo, { nome: motorista.nome, unidade: motorista.unidade })}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          Enviar no WhatsApp do Cliente
+                        </a>
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        disabled
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Sem telefone do cliente
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCopiarMensagem(protocolo);
+                      }}
+                    >
+                      {copiadoId === protocolo.id ? (
+                        <>
+                          <Check className="w-4 h-4 mr-2" />
+                          Mensagem copiada!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4 mr-2" />
+                          Copiar mensagem
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Botões de encerramento - WhatsApp e Copiar mensagem para protocolos encerrados */}
+                {protocolo.status === 'encerrado' && (
+                  <div className="pt-2 mt-2 border-t border-border space-y-2">
+                    {getTelefoneCliente(protocolo) ? (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="w-full"
+                        style={{ backgroundColor: '#22c55e', color: '#fff' }}
+                        onClick={(e) => e.stopPropagation()}
+                        asChild
+                      >
+                        <a
+                          href={buildWhatsAppLinkEncerramento(protocolo, { nome: motorista.nome, unidade: motorista.unidade })}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          Enviar no WhatsApp do Cliente
+                        </a>
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        disabled
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Sem telefone do cliente
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCopiarMensagemEncerramento(protocolo);
+                      }}
+                    >
+                      {copiadoIdEncerramento === protocolo.id ? (
+                        <>
+                          <Check className="w-4 h-4 mr-2" />
+                          Mensagem copiada!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4 mr-2" />
+                          Copiar mensagem de encerramento
+                        </>
+                      )}
+                    </Button>
                   </div>
                 )}
 
