@@ -304,6 +304,7 @@ export type Database = {
       protocolos: {
         Row: {
           arquivo_encerramento: string | null
+          ativo: boolean
           causa: string | null
           cliente_telefone: string | null
           codigo_pdv: string | null
@@ -352,6 +353,7 @@ export type Database = {
         }
         Insert: {
           arquivo_encerramento?: string | null
+          ativo?: boolean
           causa?: string | null
           cliente_telefone?: string | null
           codigo_pdv?: string | null
@@ -400,6 +402,7 @@ export type Database = {
         }
         Update: {
           arquivo_encerramento?: string | null
+          ativo?: boolean
           causa?: string | null
           cliente_telefone?: string | null
           codigo_pdv?: string | null
