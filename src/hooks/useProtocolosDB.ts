@@ -180,6 +180,7 @@ export function useProtocolosDB() {
         const { data, error } = await supabase
           .from('protocolos')
           .select('*')
+          .eq('ativo', true)
           .order('created_at', { ascending: false })
           .range(from, from + PAGE_SIZE - 1);
 
@@ -274,7 +275,7 @@ export function useProtocolosDB() {
     mutationFn: async (id: string) => {
       const { error } = await supabase
         .from('protocolos')
-        .delete()
+        .update({ ativo: false } as never)
         .eq('id', id);
 
       if (error) throw error;

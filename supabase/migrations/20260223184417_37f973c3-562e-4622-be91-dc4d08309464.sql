@@ -1,0 +1,1 @@
+ALTER TABLE public.protocolos ADD COLUMN ativo boolean NOT NULL DEFAULT true;
