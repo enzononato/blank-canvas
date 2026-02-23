@@ -4,9 +4,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MessageSquare, Key, Clock, Building, Download, Save, Package, Users, FileText, MapPin, Store } from 'lucide-react';
+import { MessageSquare, Key, Clock, Building, Download, Save, Package, Users, FileText, MapPin, Store, Database, Loader2, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import JSZip from 'jszip';
+import { supabase } from '@/integrations/supabase/client';
+import { Progress } from '@/components/ui/progress';
 import { ImportarProdutosCSV } from '@/components/ImportarProdutosCSV';
 import { ImportarPdvsCSV } from '@/components/ImportarPdvsCSV';
 import { useProdutosDB } from '@/hooks/useProdutosDB';
@@ -21,9 +24,12 @@ export default function Configuracoes() {
   const [webhookToken, setWebhookToken] = useState('');
   const [slaDefault, setSlaDefault] = useState('4');
   const [isSaving, setIsSaving] = useState(false);
+  const [isExportingBackup, setIsExportingBackup] = useState(false);
   const [totalProdutos, setTotalProdutos] = useState<number>(0);
   const [totalPdvs, setTotalPdvs] = useState<number>(0);
   const [pdvsRefreshKey, setPdvsRefreshKey] = useState(0);
+  const [isExportingFotos, setIsExportingFotos] = useState(false);
+  const [fotosProgress, setFotosProgress] = useState({ total: 0, done: 0 });
   const { getTotalProdutos } = useProdutosDB();
   const { getTotalPdvs } = usePdvsDB();
   const { motoristas } = useMotoristasDB();
@@ -132,6 +138,174 @@ export default function Configuracoes() {
     toast.success(`${rows.length} protocolo(s) exportado(s)!`);
   };
 
+  const fetchAllRows = async (table: string) => {
+    const PAGE_SIZE = 1000;
+    let allData: Record<string, unknown>[] = [];
+    let from = 0;
+    let hasMore = true;
+    while (hasMore) {
+      const { data, error } = await (supabase as any).from(table).select('*').range(from, from + PAGE_SIZE - 1);
+      if (error) throw new Error(`Erro ao buscar ${table}: ${error.message}`);
+      if (data && data.length > 0) {
+        allData = [...allData, ...data];
+        if (data.length < PAGE_SIZE) hasMore = false;
+        else from += PAGE_SIZE;
+      } else {
+        hasMore = false;
+      }
+    }
+    return allData;
+  };
+
+  const handleExportBackup = async () => {
+    setIsExportingBackup(true);
+    try {
+      const tables = ['protocolos', 'motoristas', 'pdvs', 'produtos', 'unidades', 'gestores', 'user_profiles', 'audit_logs', 'chat_conversations', 'chat_messages', 'chat_participants'] as const;
+      const backup: Record<string, unknown[]> = {};
+      
+      await Promise.all(
+        tables.map(async (table) => {
+          backup[table] = await fetchAllRows(table);
+        })
+      );
+
+      const json = JSON.stringify({
+        exportado_em: new Date().toISOString(),
+        tabelas: backup,
+      }, null, 2);
+
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `backup_sistema_${format(new Date(), 'yyyy-MM-dd_HH-mm')}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success('Backup exportado com sucesso!');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erro desconhecido';
+      toast.error(`Erro ao exportar backup: ${message}`);
+    } finally {
+      setIsExportingBackup(false);
+    }
+  };
+
+  const handleExportFotos = async () => {
+    setIsExportingFotos(true);
+    setFotosProgress({ total: 0, done: 0 });
+    try {
+      const zip = new JSZip();
+      const BUCKET = 'fotos-protocolos';
+      const PAGE_SIZE = 100;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const storageBase = `${supabaseUrl}/storage/v1/object/public/${BUCKET}`;
+
+      // 1. List all folders with pagination
+      const allFolders: string[] = [];
+      let offset = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const { data, error } = await supabase.storage.from(BUCKET).list('', { limit: PAGE_SIZE, offset });
+        if (error) throw error;
+        if (!data || data.length === 0) { hasMore = false; break; }
+        for (const item of data) {
+          // Folders have id === null in Supabase storage
+          if (item.id === null || !item.name.includes('.')) {
+            allFolders.push(item.name);
+          }
+        }
+        if (data.length < PAGE_SIZE) hasMore = false;
+        else offset += PAGE_SIZE;
+      }
+
+      // 2. List files inside each folder IN PARALLEL (much faster)
+      type FileEntry = { folder: string; name: string };
+      const listFolderFiles = async (folder: string): Promise<FileEntry[]> => {
+        const files: FileEntry[] = [];
+        let fOffset = 0;
+        let fMore = true;
+        while (fMore) {
+          const { data, error } = await supabase.storage.from(BUCKET).list(folder, { limit: PAGE_SIZE, offset: fOffset });
+          if (error || !data || data.length === 0) break;
+          for (const file of data) {
+            if (file.name && file.id) {
+              files.push({ folder, name: file.name });
+            }
+          }
+          fMore = data.length >= PAGE_SIZE;
+          fOffset += PAGE_SIZE;
+        }
+        return files;
+      };
+
+      // List all folders in parallel batches of 10
+      const allFiles: FileEntry[] = [];
+      for (let i = 0; i < allFolders.length; i += 10) {
+        const batch = allFolders.slice(i, i + 10);
+        const results = await Promise.all(batch.map(f => listFolderFiles(f)));
+        results.forEach(files => allFiles.push(...files));
+      }
+
+      if (allFiles.length === 0) {
+        toast.info('Nenhuma foto encontrada no sistema.');
+        setIsExportingFotos(false);
+        return;
+      }
+
+      setFotosProgress({ total: allFiles.length, done: 0 });
+
+      // 3. Download via public URL (fetch) in batches of 10 — much faster than SDK
+      const BATCH = 10;
+      let done = 0;
+      let errors = 0;
+      for (let i = 0; i < allFiles.length; i += BATCH) {
+        const batch = allFiles.slice(i, i + BATCH);
+        const results = await Promise.allSettled(
+          batch.map(async (f) => {
+            const path = `${f.folder}/${f.name}`;
+            const resp = await fetch(`${storageBase}/${encodeURIComponent(f.folder)}/${encodeURIComponent(f.name)}`);
+            if (!resp.ok) return null;
+            const blob = await resp.blob();
+            return { path, blob };
+          })
+        );
+        for (const r of results) {
+          if (r.status === 'fulfilled' && r.value) {
+            zip.file(r.value.path, r.value.blob);
+          } else {
+            errors++;
+          }
+        }
+        done += batch.length;
+        setFotosProgress({ total: allFiles.length, done: Math.min(done, allFiles.length) });
+        // Yield to UI thread
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+
+      toast.info('Gerando arquivo ZIP...');
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `backup_fotos_${format(new Date(), 'yyyy-MM-dd_HH-mm')}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      const msg = errors > 0
+        ? `${done - errors} foto(s) exportada(s). ${errors} falha(s) ignorada(s).`
+        : `${done} foto(s) exportada(s) com sucesso!`;
+      toast.success(msg);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erro desconhecido';
+      toast.error(`Erro ao exportar fotos: ${message}`);
+    } finally {
+      setIsExportingFotos(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div>
@@ -164,6 +338,10 @@ export default function Configuracoes() {
           <TabsTrigger value="exportar" className="gap-1.5 text-xs">
             <Download size={14} />
             Exportar
+          </TabsTrigger>
+          <TabsTrigger value="backup" className="gap-1.5 text-xs">
+            <Database size={14} />
+            Backup
           </TabsTrigger>
         </TabsList>
 
@@ -422,6 +600,97 @@ export default function Configuracoes() {
                   </Button>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="backup">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="text-primary" />
+                Backup Completo do Sistema
+              </CardTitle>
+              <CardDescription>
+                Exporte todos os dados do sistema em um único arquivo JSON para backup ou migração
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="p-4 bg-muted/50 rounded-lg border space-y-2">
+                <p className="text-sm font-medium">O backup inclui:</p>
+                <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                  <li>Protocolos</li>
+                  <li>Motoristas</li>
+                  <li>Clientes (PDVs)</li>
+                  <li>Produtos</li>
+                  <li>Unidades</li>
+                  <li>Gestores</li>
+                  <li>Perfis de Usuários</li>
+                  <li>Logs de Auditoria</li>
+                  <li>Conversas e Mensagens do Chat</li>
+                </ul>
+              </div>
+
+              <Button
+                onClick={handleExportBackup}
+                disabled={isExportingBackup}
+                className="btn-primary-gradient"
+                size="lg"
+              >
+                {isExportingBackup ? (
+                  <>
+                    <Loader2 size={18} className="mr-2 animate-spin" />
+                    Exportando...
+                  </>
+                ) : (
+                  <>
+                    <Database size={18} className="mr-2" />
+                    Exportar Dados do Sistema
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Camera className="text-primary" />
+                Exportar Fotos do Sistema
+              </CardTitle>
+              <CardDescription>
+                Baixe todas as fotos dos protocolos em um arquivo ZIP
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isExportingFotos && fotosProgress.total > 0 && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Baixando fotos...</span>
+                    <span>{fotosProgress.done} de {fotosProgress.total}</span>
+                  </div>
+                  <Progress value={(fotosProgress.done / fotosProgress.total) * 100} className="h-3" />
+                </div>
+              )}
+
+              <Button
+                onClick={handleExportFotos}
+                disabled={isExportingFotos}
+                variant="outline"
+                size="lg"
+              >
+                {isExportingFotos ? (
+                  <>
+                    <Loader2 size={18} className="mr-2 animate-spin" />
+                    Exportando fotos...
+                  </>
+                ) : (
+                  <>
+                    <Camera size={18} className="mr-2" />
+                    Exportar Fotos (ZIP)
+                  </>
+                )}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>

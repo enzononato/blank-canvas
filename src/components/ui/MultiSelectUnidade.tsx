@@ -37,18 +37,9 @@ export function MultiSelectUnidade({
   };
 
   const handleToggle = (nome: string) => {
-    if (selected.length === 0) {
-      // Estava "todas" → selecionar apenas as outras (desmarcar esta)
-      const allExcept = unidades.map(u => u.nome).filter(n => n !== nome);
-      onChange(allExcept);
-    } else if (selected.includes(nome)) {
+    if (selected.includes(nome)) {
       const newSelected = selected.filter(s => s !== nome);
-      // Se removeu a última, volta para "todas"
-      if (newSelected.length === 0) {
-        onChange([]);
-      } else {
-        onChange(newSelected);
-      }
+      onChange(newSelected);
     } else {
       const newSelected = [...selected, nome];
       // Se selecionou todas, volta para array vazio (= todas)
@@ -61,7 +52,7 @@ export function MultiSelectUnidade({
   };
 
   const isChecked = (nome: string) => {
-    return selected.length === 0 || selected.includes(nome);
+    return selected.includes(nome);
   };
 
   const displayText = () => {
