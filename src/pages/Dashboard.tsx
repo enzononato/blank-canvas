@@ -742,6 +742,10 @@ export default function Dashboard() {
               <tbody>
                 {protocolosProximosSLA.map((protocolo) => {
                   const diasFaltando = 16 - protocolo.slaDias;
+                  const unidadeProtocolo = protocolo.motorista?.unidade || '—';
+                  const gestorResponsavel = gestores.find(g => 
+                    g.unidades.some(u => u.toUpperCase().trim() === unidadeProtocolo.toUpperCase().trim())
+                  );
                   
                   return (
                     <tr 
@@ -758,6 +762,14 @@ export default function Dashboard() {
                           </div>
                           <span className="font-medium text-[11px]">{protocolo.motorista.nome}</span>
                         </div>
+                      </td>
+                      <td className="p-2">
+                        <span className="text-[11px] font-medium">{unidadeProtocolo}</span>
+                      </td>
+                      <td className="p-2">
+                        <span className="text-[11px] text-muted-foreground">
+                          {gestorResponsavel ? gestorResponsavel.nome : '—'}
+                        </span>
                       </td>
                       <td className="p-2 text-muted-foreground text-[11px]">{protocolo.data}</td>
                       <td className="p-2">
