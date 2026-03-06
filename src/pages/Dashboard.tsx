@@ -4,6 +4,7 @@ import { StatCard } from '@/components/ui/StatCard';
 import { RankingCard } from '@/components/ui/RankingCard';
 import { AlertCard } from '@/components/ui/AlertCard';
 import { useUnidadesDB } from '@/hooks/useUnidadesDB';
+import { useGestoresDB } from '@/hooks/useGestoresDB';
 import { MultiSelectUnidade } from '@/components/ui/MultiSelectUnidade';
 import { useProtocolos } from '@/contexts/ProtocolosContext';
 import { useAuth } from '@/contexts/AuthContext';
