@@ -730,6 +730,8 @@ export default function Dashboard() {
                 <tr className="table-header bg-amber-500/10">
                   <th className="text-left p-2 text-[10px] rounded-tl-lg">Protocolo</th>
                   <th className="text-left p-2 text-[10px]">Motorista</th>
+                  <th className="text-left p-2 text-[10px]">Unidade</th>
+                  <th className="text-left p-2 text-[10px]">Gestor</th>
                   <th className="text-left p-2 text-[10px]">Data</th>
                   <th className="text-left p-2 text-[10px]">Dias SLA</th>
                   <th className="text-left p-2 text-[10px]">Faltam</th>
