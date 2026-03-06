@@ -148,7 +148,8 @@ export default function Dashboard() {
     
     const totalHoje = protocolosFiltrados.filter(p => {
       try {
-        return isToday(parseISO(p.createdAt));
+        const dataProtocolo = parse(p.data, 'dd/MM/yyyy', new Date());
+        return isToday(dataProtocolo);
       } catch {
         return false;
       }
