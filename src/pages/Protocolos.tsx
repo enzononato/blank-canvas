@@ -166,7 +166,17 @@ export default function Protocolos() {
       let periodoMatch = true;
       if (periodoFilter === 'hoje') {
         try {
-          periodoMatch = isToday(parseISO(p.createdAt));
+          if (p.status === 'encerrado') {
+            const dataEnc = getDataEncerramentoFromLog(p.observacoesLog);
+            if (dataEnc) {
+              const parsed = parse(dataEnc, 'dd/MM/yyyy', new Date());
+              periodoMatch = isToday(parsed);
+            } else {
+              periodoMatch = false;
+            }
+          } else {
+            periodoMatch = isToday(parseISO(p.createdAt));
+          }
         } catch {
           periodoMatch = false;
         }
