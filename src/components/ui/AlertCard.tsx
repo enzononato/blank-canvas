@@ -157,8 +157,8 @@ export function AlertCard({ items, className, delay = 0 }: AlertCardProps) {
                   className={cn("mt-0.5 shrink-0", styles.icon)} 
                 />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <p className={cn("text-xs font-semibold truncate", styles.text)}>
+                    <div className="flex items-center gap-1.5">
+                    <p className={cn("text-xs font-semibold break-words whitespace-normal", styles.text)}>
                       {item.titulo}
                     </p>
                     <Eye size={10} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
