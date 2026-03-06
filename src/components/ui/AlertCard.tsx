@@ -108,7 +108,7 @@ export function AlertCard({ items, className, delay = 0 }: AlertCardProps) {
 
   return (
     <div 
-      className={cn('card-stats animate-slide-up flex flex-col overflow-hidden', className)}
+      className={cn('card-stats animate-slide-up flex flex-col overflow-hidden max-h-[460px]', className)}
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="flex items-center justify-between mb-3">
@@ -137,7 +137,7 @@ export function AlertCard({ items, className, delay = 0 }: AlertCardProps) {
         </div>
       </div>
       
-      <div className="flex-1 min-h-0 space-y-2 overflow-y-auto overflow-x-hidden pb-2 -mb-1" style={{ maxHeight: 'calc(100% - 2rem)' }}>
+      <div className="flex-1 min-h-0 space-y-2 overflow-y-auto overflow-x-hidden pb-2 -mb-1">
         {visibleItems.map((item) => {
           const styles = getAlertStyles(item.tipo);
           const Icon = getAlertIcon(item.tipo);
