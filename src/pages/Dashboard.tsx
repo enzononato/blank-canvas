@@ -56,6 +56,7 @@ export default function Dashboard() {
   const { isAdmin, user } = useAuth();
   const { motoristas } = useMotoristasDB();
   const { unidades } = useUnidadesDB();
+  const { gestores } = useGestoresDB();
   const [unidadesFiltro, setUnidadesFiltro] = useState<string[]>([]);
   const [periodoFiltro, setPeriodoFiltro] = useState<PeriodoFiltro>('todos');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
