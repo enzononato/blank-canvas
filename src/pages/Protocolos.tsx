@@ -674,6 +674,9 @@ export default function Protocolos() {
               <th className="text-center p-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider border-r border-border">Lançado</th>
               <th className="text-center p-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider border-r border-border">Msg. Envio</th>
               <th className="text-center p-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider border-r border-border">Msg. Encerramento</th>
+              {activeTab === 'encerrado' && (
+                <th className="text-left p-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider border-r border-border">Encerrado em</th>
+              )}
               <th className="text-center p-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Ações</th>
             </tr>
           </thead>
@@ -715,6 +718,11 @@ export default function Protocolos() {
                   <td className="p-2.5 text-center border-r border-border">
                     <Skeleton className="h-5 w-5 mx-auto rounded-full" />
                   </td>
+                  {activeTab === 'encerrado' && (
+                    <td className="p-2.5 border-r border-border">
+                      <Skeleton className="h-3 w-20" />
+                    </td>
+                  )}
                   <td className="p-2.5 text-center">
                     <Skeleton className="h-7 w-7 mx-auto rounded-md" />
                   </td>
@@ -839,6 +847,22 @@ export default function Protocolos() {
                       <Clock className="text-yellow-500 mx-auto" size={18} />
                     )}
                   </td>
+                  {activeTab === 'encerrado' && (
+                    <td className="p-2.5 border-r border-border">
+                      {(() => {
+                        const logEnc = protocolo.observacoesLog?.find(l => l.acao === 'Encerrou o protocolo');
+                        if (logEnc) {
+                          return (
+                            <div className="text-[12px] text-foreground">
+                              <p className="font-bold">{logEnc.data}</p>
+                              <p className="text-muted-foreground">{logEnc.hora}</p>
+                            </div>
+                          );
+                        }
+                        return <span className="text-[11px] text-muted-foreground">—</span>;
+                      })()}
+                    </td>
+                  )}
                   <td className="p-2.5">
                     <div className="flex justify-center items-center gap-1">
                       {/* Botão olho verde - sempre visível */}
