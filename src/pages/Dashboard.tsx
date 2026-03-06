@@ -692,7 +692,7 @@ export default function Dashboard() {
       </div>
 
       {/* Rankings + Alertas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" style={{ gridAutoRows: 'minmax(0, 1fr)' }}>
         <RankingCard
           title="Top 5 Motoristas"
           icon={<Users className="text-primary" size={18} />}
