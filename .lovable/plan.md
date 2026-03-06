@@ -1,40 +1,28 @@
 
 
-## Correção: Logs de falha de login do motorista não são salvos
+## Correção: "Encerrados Hoje" conta apenas protocolos criados hoje
 
-### Problema identificado
-A função `logLoginAttempt` em `MotoristaAuthContext.tsx` não verifica o retorno da inserção no banco. O client retorna `{ data, error }` sem lançar exceção, então o `try/catch` nunca captura erros de inserção. Isso faz com que falhas de login não sejam registradas silenciosamente.
-
-### Causa raiz
-```typescript
-// Código atual - NÃO verifica o erro retornado
-try {
-  await supabase.from('motorista_login_logs').insert({...});
-} catch (e) {
-  console.error('Erro ao registrar log de login:', e);
-}
-```
+### Problema
+Na linha 617 do Dashboard, o card "Encerrados Hoje" filtra por `isToday(parseISO(p.createdAt))` — ou seja, verifica a **data de criação**, não a **data de encerramento**. Protocolos encerrados hoje mas criados em dias anteriores não aparecem.
 
 ### Solução
-Alterar `logLoginAttempt` em **`src/contexts/MotoristaAuthContext.tsx`** para:
+Alterar o filtro do card "Encerrados Hoje" (linhas 616-618) para usar a data de encerramento extraída do `observacoesLog` (função `getDataEncerramentoFromLog` já existe no arquivo).
 
-1. Capturar o objeto `{ error }` retornado pela inserção
-2. Se houver erro, logar no console com detalhes para diagnóstico
-3. Garantir que a falha no log não interrompa o fluxo de login
-
+Em vez de:
 ```typescript
-const logLoginAttempt = async (...) => {
-  try {
-    const { error } = await supabase.from('motorista_login_logs').insert({...});
-    if (error) {
-      console.error('Erro ao registrar log de login:', error.message, error);
-    }
-  } catch (e) {
-    console.error('Exceção ao registrar log de login:', e);
-  }
-};
+isToday(parseISO(p.createdAt))
+```
+
+Usar:
+```typescript
+const dataEnc = getDataEncerramentoFromLog(p.observacoesLog);
+if (dataEnc) {
+  const parsed = parse(dataEnc, 'dd/MM/yyyy', new Date());
+  return isToday(parsed);
+}
+return false;
 ```
 
 ### Arquivo alterado
-- `src/contexts/MotoristaAuthContext.tsx` — única mudança, na função `logLoginAttempt`
+- `src/pages/Dashboard.tsx` — apenas o filtro do card "Encerrados Hoje" (linhas 614-618)
 
