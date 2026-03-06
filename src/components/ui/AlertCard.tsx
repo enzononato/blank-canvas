@@ -82,7 +82,7 @@ export function AlertCard({ items, className, delay = 0 }: AlertCardProps) {
   if (visibleItems.length === 0) {
     return (
       <div 
-        className={cn('card-stats animate-slide-up', className)}
+        className={cn('card-stats animate-slide-up flex flex-col', className)}
         style={{ animationDelay: `${delay}ms` }}
       >
         <div className="flex items-center gap-2 mb-3">
