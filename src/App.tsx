@@ -21,6 +21,7 @@ import Usuarios from "./pages/Usuarios";
 import Numeros from "./pages/Numeros";
 import Configuracoes from "./pages/Configuracoes";
 import AbrirProtocolo from "./pages/AbrirProtocolo";
+import AlteracaoPedidos from "./pages/AlteracaoPedidos";
 import MotoristaLogin from "./pages/MotoristaLogin";
 import MotoristaPortal from "./pages/MotoristaPortal";
 
@@ -126,7 +127,15 @@ const App = () => (
                         </ProtectedRoute>
                       } 
                     />
-                  </Route>
+                    <Route 
+                      path="/alteracao-pedidos" 
+                      element={
+                        <ProtectedRoute allowedRoles={['admin', 'distribuicao']}>
+                          <AlteracaoPedidos />
+                        </ProtectedRoute>
+                      } 
+                    />
+                    </Route>
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>

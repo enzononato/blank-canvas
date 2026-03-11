@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Progress } from '@/components/ui/progress';
 import { ImportarProdutosCSV } from '@/components/ImportarProdutosCSV';
 import { ImportarPdvsCSV } from '@/components/ImportarPdvsCSV';
+
 import { useProdutosDB } from '@/hooks/useProdutosDB';
 import { useMotoristasDB } from '@/hooks/useMotoristasDB';
 import { useUnidadesDB } from '@/hooks/useUnidadesDB';
@@ -694,6 +695,7 @@ export default function Configuracoes() {
             </CardContent>
           </Card>
         </TabsContent>
+
       </Tabs>
     </div>
   );
