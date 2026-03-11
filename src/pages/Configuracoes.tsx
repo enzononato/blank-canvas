@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MessageSquare, Key, Clock, Building, Download, Save, Package, Users, FileText, MapPin, Store, Database, Loader2, Camera } from 'lucide-react';
+import { MessageSquare, Key, Clock, Building, Download, Save, Package, Users, FileText, MapPin, Store, Database, Loader2, Camera, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import JSZip from 'jszip';
@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Progress } from '@/components/ui/progress';
 import { ImportarProdutosCSV } from '@/components/ImportarProdutosCSV';
 import { ImportarPdvsCSV } from '@/components/ImportarPdvsCSV';
+import { AlteracaoPedidosTab } from '@/components/AlteracaoPedidosTab';
 import { useProdutosDB } from '@/hooks/useProdutosDB';
 import { useMotoristasDB } from '@/hooks/useMotoristasDB';
 import { useUnidadesDB } from '@/hooks/useUnidadesDB';
@@ -342,6 +343,10 @@ export default function Configuracoes() {
           <TabsTrigger value="backup" className="gap-1.5 text-xs">
             <Database size={14} />
             Backup
+          </TabsTrigger>
+          <TabsTrigger value="alteracao-pedidos" className="gap-1.5 text-xs">
+            <Send size={14} />
+            Alteração nos Pedidos
           </TabsTrigger>
         </TabsList>
 
@@ -693,6 +698,10 @@ export default function Configuracoes() {
               </Button>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="alteracao-pedidos">
+          <AlteracaoPedidosTab />
         </TabsContent>
       </Tabs>
     </div>
