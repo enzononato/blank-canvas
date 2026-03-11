@@ -127,7 +127,6 @@ const App = () => (
                         </ProtectedRoute>
                       } 
                     />
-                    </Route>
                     <Route 
                       path="/alteracao-pedidos" 
                       element={
@@ -136,6 +135,7 @@ const App = () => (
                         </ProtectedRoute>
                       } 
                     />
+                    </Route>
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>
