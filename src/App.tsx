@@ -127,7 +127,15 @@ const App = () => (
                         </ProtectedRoute>
                       } 
                     />
-                  </Route>
+                    </Route>
+                    <Route 
+                      path="/alteracao-pedidos" 
+                      element={
+                        <ProtectedRoute allowedRoles={['admin', 'distribuicao']}>
+                          <AlteracaoPedidos />
+                        </ProtectedRoute>
+                      } 
+                    />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>
