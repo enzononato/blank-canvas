@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      alteracao_pedidos_log: {
+        Row: {
+          cod_pdv: string
+          created_at: string
+          enviado_por: string | null
+          erro_mensagem: string | null
+          id: string
+          mensagem_cliente: string | null
+          nome_pdv: string | null
+          status_pedido: string | null
+          sucesso: boolean
+          telefone_pdv: string | null
+        }
+        Insert: {
+          cod_pdv: string
+          created_at?: string
+          enviado_por?: string | null
+          erro_mensagem?: string | null
+          id?: string
+          mensagem_cliente?: string | null
+          nome_pdv?: string | null
+          status_pedido?: string | null
+          sucesso?: boolean
+          telefone_pdv?: string | null
+        }
+        Update: {
+          cod_pdv?: string
+          created_at?: string
+          enviado_por?: string | null
+          erro_mensagem?: string | null
+          id?: string
+          mensagem_cliente?: string | null
+          nome_pdv?: string | null
+          status_pedido?: string | null
+          sucesso?: boolean
+          telefone_pdv?: string | null
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           acao: string
