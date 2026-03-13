@@ -55,7 +55,7 @@ export function usePdvsDB() {
 
       for (let i = 0; i < pdvsFormatados.length; i += batchSize) {
         const batch = pdvsFormatados.slice(i, i + batchSize);
-        const { error } = await supabase.from('pdvs').insert(batch);
+        const { error } = await supabase.from('pdvs').upsert(batch, { onConflict: 'unidade,codigo', ignoreDuplicates: true });
         if (error) throw new Error(`Erro ao inserir lote ${Math.floor(i / batchSize) + 1}: ${error.message}`);
         inserted += batch.length;
       }
@@ -122,7 +122,7 @@ export function usePdvsDB() {
         const batch = uniquePdvs.slice(i, i + batchSize);
         const { error } = await supabase
           .from('pdvs')
-          .insert(batch);
+          .upsert(batch, { onConflict: 'unidade,codigo', ignoreDuplicates: true });
 
         if (error) {
           console.error(`Erro no lote ${Math.floor(i / batchSize) + 1}:`, error);
