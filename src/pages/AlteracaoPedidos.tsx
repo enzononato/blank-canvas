@@ -97,15 +97,22 @@ function parseCSV(text: string): PedidoRow[] {
 
   const rows: PedidoRow[] = [];
   for (let i = 1; i < lines.length; i++) {
-    const cols = parseCSVLine(lines[i]);
+    let cols = parseCSVLine(lines[i]);
+    
+    // If the entire row was wrapped in quotes (single field containing all data),
+    // re-parse the unwrapped content
+    if (cols.length === 1 && cols[0].includes(',')) {
+      cols = parseCSVLine(cols[0]);
+    }
+    
     if (cols.every(c => c === '')) continue;
 
     rows.push({
-      cod_pdv: cols[colMap.cod_pdv] || '',
-      nome_pdv: cols[colMap.nome_pdv] || '',
-      telefone_pdv: cols[colMap.telefone_pdv] || '',
-      status_pedido: cols[colMap.status_pedido] || '',
-      mensagem_cliente: cols[colMap.mensagem_cliente] || '',
+      cod_pdv: cols[colMap.cod_pdv]?.trim() || '',
+      nome_pdv: cols[colMap.nome_pdv]?.trim() || '',
+      telefone_pdv: cols[colMap.telefone_pdv]?.trim() || '',
+      status_pedido: cols[colMap.status_pedido]?.trim() || '',
+      mensagem_cliente: cols[colMap.mensagem_cliente]?.trim() || '',
     });
   }
   return rows;
