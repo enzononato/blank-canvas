@@ -1,25 +1,26 @@
 import { useState, useEffect, useRef } from 'react';
-import { Protocolo, ObservacaoLog, User } from '@/types';
+import { Protocolo, ObservacaoLog, Produto, User } from '@/types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle
 } from '@/components/ui/dialog';
-import { 
-  CheckCircle, 
-  XCircle, 
-  Download, 
-  User as UserIcon, 
-  Building2, 
-  Package, 
-  Image, 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  CheckCircle,
+  XCircle,
+  Download,
+  User as UserIcon,
+  Building2,
+  Package,
+  Image,
   MessageSquare,
   FileText,
   Clock,
@@ -35,14 +36,14 @@ import {
   Camera,
   Send,
   RefreshCw,
-  MessageCircle,
-  AlertTriangle
+  AlertTriangle,
+  Plus,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
-import { ChatBubbleExpanded } from '@/components/chat/ChatBubbleExpanded';
-import { useChatDB } from '@/hooks/useChatDB';
+import { ProdutoAutocomplete } from '@/components/ProdutoAutocomplete';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { getCustomPhotoUrl, getDirectStorageUrl } from '@/utils/urlHelpers';
 
@@ -89,10 +90,10 @@ export function ProtocoloDetails({
   const [clienteTelefone, setClienteTelefone] = useState(protocolo?.clienteTelefone || '');
   const [clienteTelefoneErro, setClienteTelefoneErro] = useState('');
   const [enviandoWhatsapp, setEnviandoWhatsapp] = useState(false);
-  const [showChat, setShowChat] = useState(false);
   const [showReabrirModal, setShowReabrirModal] = useState(false);
   const [motivoReabertura, setMotivoReabertura] = useState('');
-  const [chatInitialMessage, setChatInitialMessage] = useState<string | undefined>();
+  const [editandoProdutos, setEditandoProdutos] = useState(false);
+  const [produtosEditados, setProdutosEditados] = useState<Produto[]>(protocolo?.produtos || []);
 
   // Função para validar formato de telefone brasileiro
   const validarTelefone = (telefone: string): boolean => {
@@ -125,9 +126,7 @@ export function ProtocoloDetails({
 
   // Verifica se o telefone é válido para habilitar envio
   const telefoneValido = clienteTelefone.trim() && validarTelefone(clienteTelefone);
-  const [chatTargetUser, setChatTargetUser] = useState<{ id: string; nome: string; nivel: string; unidade: string } | null>(null);
 
-  const { getOrCreateConversation, getOrCreateUnitGroup, sendMessage } = useChatDB();
   const { registrarLog } = useAuditLog();
   const hasLoggedView = useRef(false);
 
@@ -150,60 +149,119 @@ export function ProtocoloDetails({
     }
   }, [open, protocolo, user, registrarLog]);
 
+  useEffect(() => {
+    setProdutosEditados(protocolo?.produtos || []);
+    setEditandoProdutos(false);
+  }, [protocolo]);
+
   if (!protocolo) return null;
 
-  // Extrair validador do log de observações
-  const getValidadorFromLog = (): { nome: string; id: string } | null => {
-    const logValidacao = protocolo.observacoesLog?.find(l => l.acao === 'Confirmou validação');
-    if (logValidacao) {
-      return { nome: logValidacao.usuarioNome, id: logValidacao.usuarioId };
-    }
-    return null;
+  const canEditProdutos = !!user && !!onUpdateProtocolo && (isAdmin || isDistribuicao || isControle);
+
+  const formatarProdutoHistorico = (produto: Produto) => (
+    `${produto.codigo || '-'} | ${produto.nome || '-'} | ${produto.quantidade || 0} ${produto.unidade || '-'} | validade: ${produto.validade || '-'}${produto.observacao ? ` | obs: ${produto.observacao}` : ''}`
+  );
+
+  const updateProdutoEditado = (index: number, field: keyof Produto, value: string | number | boolean | undefined) => {
+    setProdutosEditados((prev) => prev.map((produto, i) => i === index ? { ...produto, [field]: value } : produto));
   };
 
-  // Função para abrir chat de discussão do protocolo - fecha o dialog e navega para o chat
-  const handleDiscutirProtocolo = async () => {
-    // Fecha o dialog primeiro
-    onClose();
-    
-    // Navega para a página de chat com parâmetros do protocolo
-    const validador = getValidadorFromLog();
-    const params = new URLSearchParams({
-      protocolo_id: protocolo.id,
-      protocolo_numero: protocolo.numero,
+  const handleProdutoSelecionado = (index: number, value: string, embalagem?: string) => {
+    const [codigo, ...nomeParts] = value.split(' - ');
+    const nome = nomeParts.join(' - ').trim();
+    const digitandoLivre = !nomeParts.length;
+
+    setProdutosEditados((prev) => prev.map((produto, i) => i === index ? {
+      ...produto,
+      codigo: digitandoLivre ? '' : codigo.trim(),
+      nome: digitandoLivre ? value : nome,
+      unidade: embalagem || produto.unidade || 'UND',
+    } : produto));
+  };
+
+  const addProdutoEditado = () => {
+    setProdutosEditados((prev) => ([
+      ...prev,
+      {
+        codigo: '',
+        nome: '',
+        unidade: 'UND',
+        quantidade: 1,
+        validade: '',
+        observacao: ''
+      }
+    ]));
+  };
+
+  const removeProdutoEditado = (index: number) => {
+    setProdutosEditados((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleCancelarEdicaoProdutos = () => {
+    setProdutosEditados(protocolo.produtos || []);
+    setEditandoProdutos(false);
+  };
+
+  const handleSalvarProdutos = async () => {
+    if (!user || !onUpdateProtocolo) return;
+
+    const produtosSanitizados = produtosEditados.map((produto) => ({
+      ...produto,
+      codigo: String(produto.codigo || '').trim(),
+      nome: String(produto.nome || '').trim(),
+      unidade: String(produto.unidade || '').trim(),
+      quantidade: Number(produto.quantidade) || 1,
+      validade: String(produto.validade || '').trim(),
+      observacao: String(produto.observacao || '').trim() || undefined,
+    }));
+
+    const possuiInvalido = produtosSanitizados.some((produto) => (
+      !produto.nome ||
+      !['UN', 'CX', 'PCT'].includes(produto.unidade) ||
+      produto.quantidade <= 0
+    ));
+    if (possuiInvalido) {
+      toast.error('Preencha produto, unidade válida (UN, CX ou PCT) e quantidade válida em todos os itens.');
+      return;
+    }
+
+    const antes = (protocolo.produtos || []).map(formatarProdutoHistorico);
+    const depois = produtosSanitizados.map(formatarProdutoHistorico);
+
+    const logEntry: ObservacaoLog = {
+      id: Date.now().toString(),
+      usuarioNome: user.nome,
+      usuarioId: user.id,
+      data: format(new Date(), 'dd/MM/yyyy'),
+      hora: format(new Date(), 'HH:mm'),
+      acao: 'Alterou produtos do protocolo',
+      texto: `Alteração de produtos realizada por ${user.nome}. Antes: ${antes.length ? antes.join(' || ') : 'sem produtos'}. Depois: ${depois.length ? depois.join(' || ') : 'sem produtos'}.`
+    };
+
+    const protocoloAtualizado: Protocolo = {
+      ...protocolo,
+      produtos: produtosSanitizados,
+      observacoesLog: [...(protocolo.observacoesLog || []), logEntry]
+    };
+
+    await registrarLog({
+      acao: 'edicao',
+      tabela: 'protocolos',
+      registro_id: protocolo.id,
+      registro_dados: {
+        numero: protocolo.numero,
+        campo: 'produtos',
+        antes: antes,
+        depois: depois,
+      },
+      usuario_nome: user.nome,
+      usuario_role: user.nivel,
+      usuario_unidade: user.unidade,
     });
-    
-    if (validador) {
-      params.set('target_user_id', validador.id);
-      params.set('target_user_nome', validador.nome);
-    }
-    
-    // Usar window.location para garantir navegação (o navigate do react-router não está no escopo)
-    window.location.href = `/chat?${params.toString()}`;
-  };
 
-  // Função para alertar distribuição (apenas conferentes)
-  const handleAlertarDistribuicao = async () => {
-    if (!user) return;
-    
-    try {
-      // Buscar ou criar grupo da unidade
-      const unidade = protocolo.unidadeNome || protocolo.motorista.unidade || user.unidade;
-      const conversationId = await getOrCreateUnitGroup(unidade);
-      
-      // Enviar mensagem de alerta
-      await sendMessage({
-        conversationId,
-        content: `⚠️ ATENÇÃO! Protocolo ${protocolo.numero} precisa de revisão urgente.\n\nMotorista: ${protocolo.motorista.nome}\nData: ${protocolo.data}\n\nPor favor verificar!`,
-        protocoloId: protocolo.id,
-        protocoloNumero: protocolo.numero
-      });
-      
-      toast.success('Alerta enviado para o grupo da distribuição!');
-    } catch (error) {
-      console.error('Erro ao alertar distribuição:', error);
-      toast.error('Erro ao enviar alerta');
-    }
+    onUpdateProtocolo(protocoloAtualizado);
+    setEditandoProdutos(false);
+    toast.success('Produtos atualizados com sucesso!');
   };
 
   const canGoPrevious = currentIndex > 0;
@@ -747,27 +805,6 @@ Lançado: ${protocolo.lancado ? 'Sim' : 'Não'}
                   <Download size={14} />
                   Download
                 </Button>
-                <Button 
-                  onClick={handleDiscutirProtocolo} 
-                  variant="default" 
-                  size="sm" 
-                  className="h-7 gap-1.5 text-xs shadow-sm bg-primary hover:bg-primary/90"
-                >
-                  <MessageCircle size={14} />
-                  Discutir Protocolo
-                </Button>
-                {/* Botão Alertar Distribuição - apenas para conferentes */}
-                {isConferente && protocolo.status !== 'encerrado' && (
-                  <Button 
-                    onClick={handleAlertarDistribuicao} 
-                    variant="outline" 
-                    size="sm" 
-                    className="h-7 gap-1.5 text-xs shadow-sm border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
-                  >
-                    <AlertTriangle size={14} />
-                    Alertar Distribuição
-                  </Button>
-                )}
               </div>
             </DialogHeader>
           </div>
@@ -1087,6 +1124,31 @@ Lançado: ${protocolo.lancado ? 'Sim' : 'Não'}
                     }
                     return null;
                   })()}
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <p className="text-xs text-muted-foreground">
+                      {canEditProdutos ? 'Perfis de controle, distribuição e admin podem editar todos os campos dos produtos.' : 'Lista de produtos registrada no protocolo.'}
+                    </p>
+                    {canEditProdutos && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        {editandoProdutos ? (
+                          <>
+                            <Button type="button" variant="outline" size="sm" onClick={handleCancelarEdicaoProdutos}>
+                              Cancelar
+                            </Button>
+                            <Button type="button" size="sm" onClick={handleSalvarProdutos}>
+                              <Check size={14} className="mr-1" />
+                              Salvar produtos
+                            </Button>
+                          </>
+                        ) : (
+                          <Button type="button" variant="outline" size="sm" onClick={() => setEditandoProdutos(true)}>
+                            <Pencil size={14} className="mr-1" />
+                            Editar produtos
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <div className="overflow-x-auto border border-slate-300 dark:border-slate-600 rounded-lg">
                     <table className="w-full text-xs border-collapse">
                       <thead>
@@ -1102,16 +1164,97 @@ Lançado: ${protocolo.lancado ? 'Sim' : 'Não'}
                         </tr>
                       </thead>
                       <tbody>
-                        {protocolo.produtos.map((produto, index) => (
-                          <tr key={index} className="border-b border-slate-200 dark:border-slate-700 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                            <td className="px-2.5 py-1.5 text-foreground border-r border-slate-200 dark:border-slate-700">{produto.codigo}</td>
-                            <td className="px-2.5 py-1.5 text-foreground border-r border-slate-200 dark:border-slate-700">{produto.nome}</td>
-                            <td className="px-2.5 py-1.5 text-foreground border-r border-slate-200 dark:border-slate-700">{produto.unidade}</td>
-                            <td className="px-2.5 py-1.5 text-center text-foreground border-r border-slate-200 dark:border-slate-700">{produto.quantidade}</td>
-                            <td className="px-2.5 py-1.5 text-foreground border-r border-slate-200 dark:border-slate-700">{produto.validade}</td>
-                            <td className="px-2.5 py-1.5 text-muted-foreground border-r border-slate-200 dark:border-slate-700">{produto.observacao || ''}</td>
+                        {(editandoProdutos ? produtosEditados : protocolo.produtos).map((produto, index) => (
+                          <tr key={index} className="border-b border-slate-200 dark:border-slate-700 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-800/30 align-top">
+                            <td className="px-2.5 py-1.5 text-foreground border-r border-slate-200 dark:border-slate-700">
+                              {editandoProdutos ? (
+                                <div className="min-w-40">
+                                  <ProdutoAutocomplete
+                                    value={produto.codigo && produto.nome ? `${produto.codigo} - ${produto.nome}` : produto.nome || ''}
+                                    onChange={(value, embalagem) => handleProdutoSelecionado(index, value, embalagem)}
+                                    className="h-8 text-sm"
+                                  />
+                                </div>
+                              ) : produto.codigo}
+                            </td>
+                            <td className="px-2.5 py-1.5 text-foreground border-r border-slate-200 dark:border-slate-700">
+                              {editandoProdutos ? (
+                                <span className="text-xs text-muted-foreground">{produto.nome || 'Selecione um produto na lista'}</span>
+                              ) : produto.nome}
+                            </td>
+                            <td className="px-2.5 py-1.5 text-foreground border-r border-slate-200 dark:border-slate-700">
+                              {editandoProdutos ? (
+                                <Select
+                                  value={['UN', 'CX', 'PCT'].includes(produto.unidade) ? produto.unidade : 'UN'}
+                                  onValueChange={(value) => updateProdutoEditado(index, 'unidade', value)}
+                                >
+                                  <SelectTrigger className="h-8 min-w-20">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="UN">UN</SelectItem>
+                                    <SelectItem value="CX">CX</SelectItem>
+                                    <SelectItem value="PCT">PCT</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : produto.unidade}
+                            </td>
+                            <td className="px-2.5 py-1.5 text-center text-foreground border-r border-slate-200 dark:border-slate-700">
+                              {editandoProdutos ? (
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={produto.quantidade}
+                                  onChange={(e) => updateProdutoEditado(index, 'quantidade', parseInt(e.target.value, 10) || 1)}
+                                  className="h-8 min-w-16 text-center"
+                                />
+                              ) : produto.quantidade}
+                            </td>
+                            <td className="px-2.5 py-1.5 text-foreground border-r border-slate-200 dark:border-slate-700">
+                              {editandoProdutos ? (
+                                <Input
+                                  value={produto.validade}
+                                  onChange={(e) => updateProdutoEditado(index, 'validade', e.target.value)}
+                                  className="h-8 min-w-28"
+                                  placeholder="dd/mm/aaaa"
+                                />
+                              ) : produto.validade}
+                            </td>
+                            <td className="px-2.5 py-1.5 text-muted-foreground border-r border-slate-200 dark:border-slate-700">
+                              {editandoProdutos ? (
+                                <Input
+                                  value={produto.observacao || ''}
+                                  onChange={(e) => updateProdutoEditado(index, 'observacao', e.target.value)}
+                                  className="h-8 min-w-40"
+                                />
+                              ) : (produto.observacao || '')}
+                            </td>
                             <td className="px-2.5 py-1.5 text-center border-r border-slate-200 dark:border-slate-700">
-                              {produto.entregue ? (
+                              {editandoProdutos ? (
+                                <div className="flex items-center justify-center gap-1">
+                                  <Button
+                                    type="button"
+                                    variant={produto.entregue ? 'default' : 'outline'}
+                                    size="sm"
+                                    className="h-8"
+                                    onClick={() => updateProdutoEditado(index, 'entregue', !produto.entregue)}
+                                  >
+                                    {produto.entregue ? 'Entregue' : 'Pendente'}
+                                  </Button>
+                                  {produto.entregue && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-destructive"
+                                      onClick={() => removeProdutoEditado(index)}
+                                      title="Remover produto"
+                                    >
+                                      <Trash2 size={14} />
+                                    </Button>
+                                  )}
+                                </div>
+                              ) : produto.entregue ? (
                                 <div className="flex flex-col items-center gap-0.5">
                                   <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-500/20 px-1.5 py-0.5 rounded-full">
                                     <CheckCircle size={10} />
@@ -1129,7 +1272,18 @@ Lançado: ${protocolo.lancado ? 'Sim' : 'Não'}
                               )}
                             </td>
                             <td className="px-2.5 py-1.5 text-center">
-                              {(() => {
+                              {editandoProdutos ? (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive"
+                                  onClick={() => removeProdutoEditado(index)}
+                                  title="Remover produto"
+                                >
+                                  <Trash2 size={14} />
+                                </Button>
+                              ) : (() => {
                                 const fotoCanhoto = produto.fotoCanhoto || (produto.entregue ? protocolo?.fotoNotaFiscalEncerramento : null);
                                 const fotoMerc = produto.fotoMercadoria || (produto.entregue ? protocolo?.fotoEntregaMercadoria : null);
                                 if (produto.entregue && (fotoCanhoto || fotoMerc)) {
@@ -1141,7 +1295,7 @@ Lançado: ${protocolo.lancado ? 'Sim' : 'Não'}
                                           className="group relative w-8 h-8 rounded overflow-hidden border border-border hover:border-primary transition-all hover:scale-110 shadow-sm"
                                           title="Canhoto Assinado"
                                         >
-                                          <img 
+                                          <img
                                             src={getDirectStorageUrl(fotoCanhoto)}
                                             alt="Canhoto"
                                             className="w-full h-full object-cover"
@@ -1154,7 +1308,7 @@ Lançado: ${protocolo.lancado ? 'Sim' : 'Não'}
                                           className="group relative w-8 h-8 rounded overflow-hidden border border-border hover:border-primary transition-all hover:scale-110 shadow-sm"
                                           title="Mercadoria Entregue"
                                         >
-                                          <img 
+                                          <img
                                             src={getDirectStorageUrl(fotoMerc)}
                                             alt="Mercadoria"
                                             className="w-full h-full object-cover"
@@ -1169,12 +1323,33 @@ Lançado: ${protocolo.lancado ? 'Sim' : 'Não'}
                             </td>
                           </tr>
                         ))}
+                        {editandoProdutos && (
+                          <tr>
+                            <td colSpan={8} className="px-2.5 py-2 text-left">
+                              <Button type="button" variant="outline" size="sm" onClick={addProdutoEditado}>
+                                <Plus size={14} className="mr-1" />
+                                Adicionar produto
+                              </Button>
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
                 </>
               ) : (
-                <p className="text-xs text-muted-foreground italic">Nenhum produto registrado</p>
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground italic">Nenhum produto registrado</p>
+                  {canEditProdutos && (
+                    <Button type="button" variant="outline" size="sm" onClick={() => {
+                      setProdutosEditados([{ codigo: '', nome: '', unidade: 'UND', quantidade: 1, validade: '', observacao: '' }]);
+                      setEditandoProdutos(true);
+                    }}>
+                      <Plus size={14} className="mr-1" />
+                      Adicionar primeiro produto
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
 
@@ -1450,20 +1625,6 @@ Lançado: ${protocolo.lancado ? 'Sim' : 'Não'}
         </DialogContent>
       </Dialog>
 
-      {/* Chat Bubble Expanded */}
-      {showChat && (
-        <ChatBubbleExpanded 
-          onClose={() => {
-            setShowChat(false);
-            setChatTargetUser(null);
-            setChatInitialMessage(undefined);
-          }} 
-          protocoloId={protocolo.id}
-          protocoloNumero={protocolo.numero}
-          initialMessage={chatInitialMessage}
-          targetUser={chatTargetUser}
-        />
-      )}
 
       {/* Modal de Reabertura */}
       <Dialog open={showReabrirModal} onOpenChange={setShowReabrirModal}>
