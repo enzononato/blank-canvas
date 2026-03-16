@@ -48,18 +48,26 @@ interface BuscarProtocoloPdvProps {
   selectionMode?: 'select' | 'view';
 }
 
-export function BuscarProtocoloPdv({ isOpen, onClose, onSelectProtocolo, motorista }: BuscarProtocoloPdvProps) {
+export function BuscarProtocoloPdv({
+  isOpen,
+  onClose,
+  onSelectProtocolo,
+  motorista,
+  selectionMode = 'select',
+}: BuscarProtocoloPdvProps) {
   const [codigoPdv, setCodigoPdv] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [resultados, setResultados] = useState<ProtocoloEncontrado[]>([]);
   const [buscaRealizada, setBuscaRealizada] = useState(false);
+  const [protocoloExpandidoId, setProtocoloExpandidoId] = useState<string | null>(null);
 
   const handleBuscar = async () => {
     if (!codigoPdv.trim()) return;
-    
+
     setIsSearching(true);
     setBuscaRealizada(true);
-    
+    setProtocoloExpandidoId(null);
+
     try {
       const { data, error } = await supabase
         .from('protocolos')
@@ -70,9 +78,9 @@ export function BuscarProtocoloPdv({ isOpen, onClose, onSelectProtocolo, motoris
         .or('oculto.is.null,oculto.eq.false')
         .order('created_at', { ascending: false })
         .limit(20);
-      
+
       if (error) throw error;
-      
+
       setResultados((data || []) as ProtocoloEncontrado[]);
     } catch (err) {
       console.error('Erro ao buscar protocolos:', err);
