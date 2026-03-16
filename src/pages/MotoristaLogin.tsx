@@ -109,9 +109,12 @@ const getInputClassName = (field: 'identificador' | 'senha') => {
                 <Input
                   id="identificador"
                   type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="off"
                   placeholder="Digite seu CPF ou código"
                   value={identificador}
-                  onChange={(e) => setIdentificador(e.target.value)}
+                  onChange={(e) => setIdentificador(e.target.value.replace(/\D/g, ''))}
                   onBlur={() => handleBlur('identificador')}
                   className={getInputClassName('identificador')}
                   disabled={isLoading}
