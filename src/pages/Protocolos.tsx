@@ -871,20 +871,32 @@ export default function Protocolos() {
                     )}
                   </td>
                   {activeTab === 'encerrado' && (
-                    <td className="p-2.5 border-r border-border">
-                      {(() => {
-                        const logEnc = protocolo.observacoesLog?.find(l => l.acao?.startsWith('Encerrou o protocolo'));
-                        if (logEnc) {
+                    <>
+                      <td className="p-2.5 text-center border-r border-border">
+                        {(() => {
+                          const dias = calcularSlaDias(protocolo.data, protocolo.status, protocolo.observacoesLog);
                           return (
-                            <div className="text-[12px] text-foreground">
-                              <p className="font-bold">{logEnc.data}</p>
-                              <p className="text-muted-foreground">{logEnc.hora}</p>
-                            </div>
+                            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-muted text-muted-foreground">
+                              {dias} {dias === 1 ? 'dia' : 'dias'}
+                            </span>
                           );
-                        }
-                        return <span className="text-[11px] text-muted-foreground">—</span>;
-                      })()}
-                    </td>
+                        })()}
+                      </td>
+                      <td className="p-2.5 border-r border-border">
+                        {(() => {
+                          const logEnc = getLogEncerramentoFromLog(protocolo.observacoesLog);
+                          if (logEnc) {
+                            return (
+                              <div className="text-[12px] text-foreground">
+                                <p className="font-bold">{logEnc.data}</p>
+                                <p className="text-muted-foreground">{logEnc.hora}</p>
+                              </div>
+                            );
+                          }
+                          return <span className="text-[11px] text-muted-foreground">—</span>;
+                        })()}
+                      </td>
+                    </>
                   )}
                   <td className="p-2.5">
                     <div className="flex justify-center items-center gap-1">
