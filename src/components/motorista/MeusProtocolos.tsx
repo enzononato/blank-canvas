@@ -49,6 +49,28 @@ const foiReaberto = (observacoesLog?: ObservacaoLog[]): boolean => {
   return !!observacoesLog?.some(log => log.acao === 'Reabriu o protocolo');
 };
 
+const HISTORICO_MOTORISTA_ACOES = [
+  'Abriu protocolo',
+  'Criou protocolo',
+  'Alterou produtos',
+  'Entrega parcial',
+  'Encerrou o protocolo (entrega final)',
+] as const;
+
+const getHistoricoMotorista = (observacoesLog?: ObservacaoLog[], status?: ProtocoloSimples['status']) => {
+  const logs = observacoesLog || [];
+
+  return logs.filter((log) => {
+    if (status === 'encerrado') return false;
+
+    if (log.acao === 'Encerrou o protocolo (entrega final)') {
+      return status === 'em_andamento';
+    }
+
+    return HISTORICO_MOTORISTA_ACOES.includes(log.acao as typeof HISTORICO_MOTORISTA_ACOES[number]);
+  });
+};
+
 // Constrói a mensagem de texto para o protocolo
 const buildMensagemProtocolo = (protocolo: ProtocoloSimples, motoristaInfo: { nome: string; unidade?: string | null }): string => {
   const fotos = protocolo.fotos_protocolo as Record<string, string> | null;
