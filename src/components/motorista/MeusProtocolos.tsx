@@ -153,6 +153,7 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
   // Modal states
   const [showBuscaPdv, setShowBuscaPdv] = useState(false);
   const [showEncerrarModal, setShowEncerrarModal] = useState(false);
+  const [modoBuscaPdv, setModoBuscaPdv] = useState<'select' | 'view'>('select');
   const [protocoloParaEncerrar, setProtocoloParaEncerrar] = useState<ProtocoloSimples | null>(null);
 
   const handleCopiarMensagem = (protocolo: ProtocoloSimples) => {
