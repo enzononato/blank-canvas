@@ -157,6 +157,11 @@ export function ProtocoloDetails({
   if (!protocolo) return null;
 
   const canEditProdutos = !!user && !!onUpdateProtocolo && (isAdmin || isDistribuicao || isControle);
+  const isProtocoloEncerrado = protocolo.status === 'encerrado';
+
+  const mostrarAvisoProtocoloEncerrado = () => {
+    toast.error('Não é possível alterar produtos de um protocolo encerrado. Reabra o protocolo para editar.');
+  };
 
   const formatarProdutoHistorico = (produto: Produto) => (
     `${produto.codigo || '-'} | ${produto.nome || '-'} | ${produto.quantidade || 0} ${produto.unidade || '-'} | validade: ${produto.validade || '-'}${produto.observacao ? ` | obs: ${produto.observacao}` : ''}`
@@ -197,6 +202,25 @@ export function ProtocoloDetails({
     setProdutosEditados((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleIniciarEdicaoProdutos = () => {
+    if (isProtocoloEncerrado) {
+      mostrarAvisoProtocoloEncerrado();
+      return;
+    }
+
+    setEditandoProdutos(true);
+  };
+
+  const handleAdicionarPrimeiroProduto = () => {
+    if (isProtocoloEncerrado) {
+      mostrarAvisoProtocoloEncerrado();
+      return;
+    }
+
+    setProdutosEditados([{ codigo: '', nome: '', unidade: 'UND', quantidade: 1, validade: '', observacao: '' }]);
+    setEditandoProdutos(true);
+  };
+
   const handleCancelarEdicaoProdutos = () => {
     setProdutosEditados(protocolo.produtos || []);
     setEditandoProdutos(false);
@@ -204,6 +228,10 @@ export function ProtocoloDetails({
 
   const handleSalvarProdutos = async () => {
     if (!user || !onUpdateProtocolo) return;
+    if (isProtocoloEncerrado) {
+      mostrarAvisoProtocoloEncerrado();
+      return;
+    }
 
     const produtosSanitizados = produtosEditados.map((produto) => ({
       ...produto,
