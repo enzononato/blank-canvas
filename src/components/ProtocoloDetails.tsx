@@ -1247,7 +1247,7 @@ Lançado: ${protocolo.lancado ? 'Sim' : 'Não'}
                               {editandoProdutos ? (
                                 <div className="min-w-40">
                                   <ProdutoAutocomplete
-                                    value={produto.codigo && produto.nome ? `${produto.codigo} - ${produto.nome}` : produto.nome}
+                                    value={produto.codigo && produto.nome ? `${produto.codigo} - ${produto.nome}` : produto.nome || ''}
                                     onChange={(value, embalagem) => handleProdutoSelecionado(index, value, embalagem)}
                                     className="h-8 text-sm"
                                   />
