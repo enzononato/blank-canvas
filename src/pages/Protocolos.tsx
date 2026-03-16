@@ -33,10 +33,15 @@ import { useUnidadesDB } from '@/hooks/useUnidadesDB';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import CreateProtocoloModal from '@/components/CreateProtocoloModal';
 
+// Função para extrair log de encerramento do histórico
+const getLogEncerramentoFromLog = (observacoesLog?: ObservacaoLog[]): ObservacaoLog | null => {
+  const logEncerramento = observacoesLog?.find(l => l.acao?.startsWith('Encerrou o protocolo'));
+  return logEncerramento || null;
+};
+
 // Função para extrair data de encerramento do log
 const getDataEncerramentoFromLog = (observacoesLog?: ObservacaoLog[]): string | null => {
-  const logEncerramento = observacoesLog?.find(l => l.acao?.startsWith('Encerrou o protocolo'));
-  return logEncerramento?.data || null;
+  return getLogEncerramentoFromLog(observacoesLog)?.data || null;
 };
 
 const calcularSlaDias = (dataStr: string, status?: string, observacoesLog?: ObservacaoLog[]): number => {
