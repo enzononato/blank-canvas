@@ -15,12 +15,12 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Motorista, Produto } from '@/types';
 
-interface ProtocoloEncontrado {
+export interface ProtocoloEncontrado {
   id: string;
   numero: string;
   data: string;
   hora: string;
-  status: string;
+  status: 'aberto' | 'em_andamento' | 'encerrado';
   tipo_reposicao: string | null;
   causa: string | null;
   codigo_pdv: string | null;
@@ -43,22 +43,31 @@ interface ProtocoloEncontrado {
 interface BuscarProtocoloPdvProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectProtocolo: (protocolo: ProtocoloEncontrado) => void;
+  onSelectProtocolo?: (protocolo: ProtocoloEncontrado) => void;
   motorista: Motorista;
+  selectionMode?: 'select' | 'view';
 }
 
-export function BuscarProtocoloPdv({ isOpen, onClose, onSelectProtocolo, motorista }: BuscarProtocoloPdvProps) {
+export function BuscarProtocoloPdv({
+  isOpen,
+  onClose,
+  onSelectProtocolo,
+  motorista,
+  selectionMode = 'select',
+}: BuscarProtocoloPdvProps) {
   const [codigoPdv, setCodigoPdv] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [resultados, setResultados] = useState<ProtocoloEncontrado[]>([]);
   const [buscaRealizada, setBuscaRealizada] = useState(false);
+  const [protocoloExpandidoId, setProtocoloExpandidoId] = useState<string | null>(null);
 
   const handleBuscar = async () => {
     if (!codigoPdv.trim()) return;
-    
+
     setIsSearching(true);
     setBuscaRealizada(true);
-    
+    setProtocoloExpandidoId(null);
+
     try {
       const { data, error } = await supabase
         .from('protocolos')
@@ -69,9 +78,9 @@ export function BuscarProtocoloPdv({ isOpen, onClose, onSelectProtocolo, motoris
         .or('oculto.is.null,oculto.eq.false')
         .order('created_at', { ascending: false })
         .limit(20);
-      
+
       if (error) throw error;
-      
+
       setResultados((data || []) as ProtocoloEncontrado[]);
     } catch (err) {
       console.error('Erro ao buscar protocolos:', err);
@@ -100,7 +109,12 @@ export function BuscarProtocoloPdv({ isOpen, onClose, onSelectProtocolo, motoris
   };
 
   const handleSelectProtocolo = (protocolo: ProtocoloEncontrado) => {
-    onSelectProtocolo(protocolo);
+    if (selectionMode === 'view') {
+      setProtocoloExpandidoId((current) => current === protocolo.id ? null : protocolo.id);
+      return;
+    }
+
+    onSelectProtocolo?.(protocolo);
     handleClose();
   };
 
@@ -108,6 +122,7 @@ export function BuscarProtocoloPdv({ isOpen, onClose, onSelectProtocolo, motoris
     setCodigoPdv('');
     setResultados([]);
     setBuscaRealizada(false);
+    setProtocoloExpandidoId(null);
     onClose();
   };
 
@@ -117,7 +132,7 @@ export function BuscarProtocoloPdv({ isOpen, onClose, onSelectProtocolo, motoris
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Search className="w-5 h-5 text-primary" />
-            Buscar Reposição por PDV
+            {selectionMode === 'view' ? 'Consultar Reposição do PDV' : 'Buscar Reposição por PDV'}
           </DialogTitle>
         </DialogHeader>
 
@@ -156,10 +171,11 @@ export function BuscarProtocoloPdv({ isOpen, onClose, onSelectProtocolo, motoris
 
           {!isSearching && resultados.map((protocolo) => {
             const produtos = Array.isArray(protocolo.produtos) ? protocolo.produtos as Produto[] : [];
-            
+            const isExpanded = protocoloExpandidoId === protocolo.id;
+
             return (
-              <Card 
-                key={protocolo.id} 
+              <Card
+                key={protocolo.id}
                 className="cursor-pointer hover:shadow-md hover:border-primary/50 transition-all"
                 onClick={() => handleSelectProtocolo(protocolo)}
               >
@@ -184,7 +200,7 @@ export function BuscarProtocoloPdv({ isOpen, onClose, onSelectProtocolo, motoris
                         <div className="mt-2 pt-2 border-t border-border/50">
                           <div className="flex items-start gap-1 text-xs">
                             <MessageSquare className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
-                            <p className="text-foreground line-clamp-3">{protocolo.observacao_geral}</p>
+                            <p className={selectionMode === 'view' && !isExpanded ? 'text-foreground line-clamp-2' : 'text-foreground line-clamp-3'}>{protocolo.observacao_geral}</p>
                           </div>
                         </div>
                       )}
@@ -195,18 +211,29 @@ export function BuscarProtocoloPdv({ isOpen, onClose, onSelectProtocolo, motoris
                             <span className="font-medium">{produtos.length} produto{produtos.length > 1 ? 's' : ''}:</span>
                           </div>
                           <ul className="text-xs text-foreground space-y-0.5 ml-4">
-                            {produtos.slice(0, 5).map((produto, idx) => (
+                            {(selectionMode === 'view' && !isExpanded ? produtos.slice(0, 2) : produtos.slice(0, 5)).map((produto, idx) => (
                               <li key={idx} className="flex items-center gap-1">
                                 <span className="truncate">• {produto.nome}</span>
                                 <span className="font-medium text-primary shrink-0">({produto.quantidade || 1} {produto.unidade || 'un'})</span>
                               </li>
                             ))}
-                            {produtos.length > 5 && (
+                            {((selectionMode === 'view' && !isExpanded) ? produtos.length > 2 : produtos.length > 5) && (
                               <li className="text-muted-foreground italic">
-                                ... e mais {produtos.length - 5} produto{produtos.length - 5 > 1 ? 's' : ''}
+                                {selectionMode === 'view' && !isExpanded
+                                  ? `toque para ver mais ${produtos.length - 2} item(ns)`
+                                  : `... e mais ${produtos.length - 5} produto${produtos.length - 5 > 1 ? 's' : ''}`}
                               </li>
                             )}
                           </ul>
+                        </div>
+                      )}
+
+                      {selectionMode === 'view' && isExpanded && (
+                        <div className="mt-2 pt-2 border-t border-border/50 space-y-1 text-xs text-foreground">
+                          {protocolo.nota_fiscal && <p>NF: <span className="font-medium">{protocolo.nota_fiscal}</span></p>}
+                          {protocolo.causa && <p>Causa: <span className="font-medium">{protocolo.causa}</span></p>}
+                          {protocolo.mapa && <p>Mapa: <span className="font-medium">{protocolo.mapa}</span></p>}
+                          <p className="text-muted-foreground pt-1">Visualização somente leitura.</p>
                         </div>
                       )}
                     </div>

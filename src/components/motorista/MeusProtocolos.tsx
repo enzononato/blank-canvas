@@ -9,7 +9,7 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Motorista, Produto, ObservacaoLog, FotosProtocolo } from '@/types';
 import { cn } from '@/lib/utils';
-import { BuscarProtocoloPdv } from './BuscarProtocoloPdv';
+import { BuscarProtocoloPdv, ProtocoloEncontrado } from './BuscarProtocoloPdv';
 import { EncerrarProtocoloModal } from './EncerrarProtocoloModal';
 
 interface MeusProtocolosProps {
@@ -153,6 +153,7 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
   // Modal states
   const [showBuscaPdv, setShowBuscaPdv] = useState(false);
   const [showEncerrarModal, setShowEncerrarModal] = useState(false);
+  const [modoBuscaPdv, setModoBuscaPdv] = useState<'select' | 'view'>('select');
   const [protocoloParaEncerrar, setProtocoloParaEncerrar] = useState<ProtocoloSimples | null>(null);
 
   const handleCopiarMensagem = (protocolo: ProtocoloSimples) => {
@@ -615,8 +616,10 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
     });
   };
 
-  const handleProtocoloEncontrado = (protocolo: ProtocoloSimples) => {
-    setProtocoloParaEncerrar(protocolo);
+  const handleProtocoloEncontrado = (protocolo: ProtocoloEncontrado) => {
+    if (modoBuscaPdv === 'view') return;
+
+    setProtocoloParaEncerrar(protocolo as unknown as ProtocoloSimples);
     setShowEncerrarModal(true);
   };
 
@@ -679,13 +682,16 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
           {protocolos.length} protocolo{protocolos.length !== 1 ? 's' : ''} encontrado{protocolos.length !== 1 ? 's' : ''}
         </p>
         <div className="flex items-center gap-1">
-          {filtroStatus === 'em_andamento' && (
+          {(filtroStatus === 'em_andamento' || filtroStatus === 'abertos') && (
             <Button
               variant="outline"
               size="icon"
               className="h-8 w-8"
-              onClick={() => setShowBuscaPdv(true)}
-              title="Buscar por PDV"
+              onClick={() => {
+                setModoBuscaPdv(filtroStatus === 'abertos' ? 'view' : 'select');
+                setShowBuscaPdv(true);
+              }}
+              title={filtroStatus === 'abertos' ? 'Consultar status da reposição por PDV' : 'Buscar por PDV'}
             >
               <Plus className="w-4 h-4" />
             </Button>
@@ -710,8 +716,9 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
       <BuscarProtocoloPdv
         isOpen={showBuscaPdv}
         onClose={() => setShowBuscaPdv(false)}
-        onSelectProtocolo={handleProtocoloEncontrado as any}
+        onSelectProtocolo={handleProtocoloEncontrado}
         motorista={motorista}
+        selectionMode={modoBuscaPdv}
       />
 
       {/* Modal de Encerramento */}
