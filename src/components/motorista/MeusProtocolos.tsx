@@ -682,13 +682,16 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
           {protocolos.length} protocolo{protocolos.length !== 1 ? 's' : ''} encontrado{protocolos.length !== 1 ? 's' : ''}
         </p>
         <div className="flex items-center gap-1">
-          {filtroStatus === 'em_andamento' && (
+          {(filtroStatus === 'em_andamento' || filtroStatus === 'abertos') && (
             <Button
               variant="outline"
               size="icon"
               className="h-8 w-8"
-              onClick={() => setShowBuscaPdv(true)}
-              title="Buscar por PDV"
+              onClick={() => {
+                setModoBuscaPdv(filtroStatus === 'abertos' ? 'view' : 'select');
+                setShowBuscaPdv(true);
+              }}
+              title={filtroStatus === 'abertos' ? 'Consultar status da reposição por PDV' : 'Buscar por PDV'}
             >
               <Plus className="w-4 h-4" />
             </Button>
