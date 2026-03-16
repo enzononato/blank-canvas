@@ -36,7 +36,6 @@ import {
   Camera,
   Send,
   RefreshCw,
-  MessageCircle,
   AlertTriangle,
   Plus,
   Trash2
@@ -44,9 +43,7 @@ import {
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
-import { ChatBubbleExpanded } from '@/components/chat/ChatBubbleExpanded';
 import { ProdutoAutocomplete } from '@/components/ProdutoAutocomplete';
-import { useChatDB } from '@/hooks/useChatDB';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { getCustomPhotoUrl, getDirectStorageUrl } from '@/utils/urlHelpers';
 
@@ -93,10 +90,8 @@ export function ProtocoloDetails({
   const [clienteTelefone, setClienteTelefone] = useState(protocolo?.clienteTelefone || '');
   const [clienteTelefoneErro, setClienteTelefoneErro] = useState('');
   const [enviandoWhatsapp, setEnviandoWhatsapp] = useState(false);
-  const [showChat, setShowChat] = useState(false);
   const [showReabrirModal, setShowReabrirModal] = useState(false);
   const [motivoReabertura, setMotivoReabertura] = useState('');
-  const [chatInitialMessage, setChatInitialMessage] = useState<string | undefined>();
   const [editandoProdutos, setEditandoProdutos] = useState(false);
   const [produtosEditados, setProdutosEditados] = useState<Produto[]>(protocolo?.produtos || []);
 
@@ -131,9 +126,7 @@ export function ProtocoloDetails({
 
   // Verifica se o telefone é válido para habilitar envio
   const telefoneValido = clienteTelefone.trim() && validarTelefone(clienteTelefone);
-  const [chatTargetUser, setChatTargetUser] = useState<{ id: string; nome: string; nivel: string; unidade: string } | null>(null);
 
-  const { getOrCreateConversation, getOrCreateUnitGroup, sendMessage } = useChatDB();
   const { registrarLog } = useAuditLog();
   const hasLoggedView = useRef(false);
 
@@ -269,60 +262,6 @@ export function ProtocoloDetails({
     onUpdateProtocolo(protocoloAtualizado);
     setEditandoProdutos(false);
     toast.success('Produtos atualizados com sucesso!');
-  };
-
-  // Extrair validador do log de observações
-  const getValidadorFromLog = (): { nome: string; id: string } | null => {
-    const logValidacao = protocolo.observacoesLog?.find(l => l.acao === 'Confirmou validação');
-    if (logValidacao) {
-      return { nome: logValidacao.usuarioNome, id: logValidacao.usuarioId };
-    }
-    return null;
-  };
-
-  // Função para abrir chat de discussão do protocolo - fecha o dialog e navega para o chat
-  const handleDiscutirProtocolo = async () => {
-    // Fecha o dialog primeiro
-    onClose();
-    
-    // Navega para a página de chat com parâmetros do protocolo
-    const validador = getValidadorFromLog();
-    const params = new URLSearchParams({
-      protocolo_id: protocolo.id,
-      protocolo_numero: protocolo.numero,
-    });
-    
-    if (validador) {
-      params.set('target_user_id', validador.id);
-      params.set('target_user_nome', validador.nome);
-    }
-    
-    // Usar window.location para garantir navegação (o navigate do react-router não está no escopo)
-    window.location.href = `/chat?${params.toString()}`;
-  };
-
-  // Função para alertar distribuição (apenas conferentes)
-  const handleAlertarDistribuicao = async () => {
-    if (!user) return;
-    
-    try {
-      // Buscar ou criar grupo da unidade
-      const unidade = protocolo.unidadeNome || protocolo.motorista.unidade || user.unidade;
-      const conversationId = await getOrCreateUnitGroup(unidade);
-      
-      // Enviar mensagem de alerta
-      await sendMessage({
-        conversationId,
-        content: `⚠️ ATENÇÃO! Protocolo ${protocolo.numero} precisa de revisão urgente.\n\nMotorista: ${protocolo.motorista.nome}\nData: ${protocolo.data}\n\nPor favor verificar!`,
-        protocoloId: protocolo.id,
-        protocoloNumero: protocolo.numero
-      });
-      
-      toast.success('Alerta enviado para o grupo da distribuição!');
-    } catch (error) {
-      console.error('Erro ao alertar distribuição:', error);
-      toast.error('Erro ao enviar alerta');
-    }
   };
 
   const canGoPrevious = currentIndex > 0;
@@ -866,27 +805,6 @@ Lançado: ${protocolo.lancado ? 'Sim' : 'Não'}
                   <Download size={14} />
                   Download
                 </Button>
-                <Button 
-                  onClick={handleDiscutirProtocolo} 
-                  variant="default" 
-                  size="sm" 
-                  className="h-7 gap-1.5 text-xs shadow-sm bg-primary hover:bg-primary/90"
-                >
-                  <MessageCircle size={14} />
-                  Discutir Protocolo
-                </Button>
-                {/* Botão Alertar Distribuição - apenas para conferentes */}
-                {isConferente && protocolo.status !== 'encerrado' && (
-                  <Button 
-                    onClick={handleAlertarDistribuicao} 
-                    variant="outline" 
-                    size="sm" 
-                    className="h-7 gap-1.5 text-xs shadow-sm border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
-                  >
-                    <AlertTriangle size={14} />
-                    Alertar Distribuição
-                  </Button>
-                )}
               </div>
             </DialogHeader>
           </div>
@@ -1707,20 +1625,6 @@ Lançado: ${protocolo.lancado ? 'Sim' : 'Não'}
         </DialogContent>
       </Dialog>
 
-      {/* Chat Bubble Expanded */}
-      {showChat && (
-        <ChatBubbleExpanded 
-          onClose={() => {
-            setShowChat(false);
-            setChatTargetUser(null);
-            setChatInitialMessage(undefined);
-          }} 
-          protocoloId={protocolo.id}
-          protocoloNumero={protocolo.numero}
-          initialMessage={chatInitialMessage}
-          targetUser={chatTargetUser}
-        />
-      )}
 
       {/* Modal de Reabertura */}
       <Dialog open={showReabrirModal} onOpenChange={setShowReabrirModal}>
