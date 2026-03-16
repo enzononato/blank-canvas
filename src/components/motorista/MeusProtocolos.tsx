@@ -497,6 +497,28 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
                   </div>
                 )}
 
+                {(protocolo.status === 'aberto' || protocolo.status === 'em_andamento') && historicoFiltrado.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <History className="w-3.5 h-3.5" />
+                      <span>Histórico da reposição</span>
+                    </div>
+                    <div className="bg-muted/50 rounded-md p-2 space-y-2">
+                      {historicoFiltrado.map((log) => (
+                        <div key={log.id} className="border-l-2 border-border pl-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-[11px] font-medium text-foreground">{log.acao}</p>
+                            <span className="text-[10px] text-muted-foreground shrink-0">
+                              {log.data} às {log.hora}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">{log.texto}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Botões de ação - WhatsApp e Copiar mensagem */}
                 {(protocolo.status === 'aberto' || protocolo.status === 'em_andamento') && (
                   <div className="pt-2 mt-2 border-t border-border space-y-2">
