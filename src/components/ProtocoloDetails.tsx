@@ -1154,7 +1154,11 @@ Lançado: ${protocolo.lancado ? 'Sim' : 'Não'}
                   })()}
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                     <p className="text-xs text-muted-foreground">
-                      {canEditProdutos ? 'Perfis de controle, distribuição e admin podem editar todos os campos dos produtos.' : 'Lista de produtos registrada no protocolo.'}
+                      {canEditProdutos
+                        ? isProtocoloEncerrado
+                          ? 'Protocolo encerrado: para alterar produtos, reabra o protocolo primeiro.'
+                          : 'Perfis de controle, distribuição e admin podem editar todos os campos dos produtos.'
+                        : 'Lista de produtos registrada no protocolo.'}
                     </p>
                     {canEditProdutos && (
                       <div className="flex flex-wrap items-center gap-2">
@@ -1163,13 +1167,13 @@ Lançado: ${protocolo.lancado ? 'Sim' : 'Não'}
                             <Button type="button" variant="outline" size="sm" onClick={handleCancelarEdicaoProdutos}>
                               Cancelar
                             </Button>
-                            <Button type="button" size="sm" onClick={handleSalvarProdutos}>
+                            <Button type="button" size="sm" onClick={handleSalvarProdutos} disabled={isProtocoloEncerrado}>
                               <Check size={14} className="mr-1" />
                               Salvar produtos
                             </Button>
                           </>
                         ) : (
-                          <Button type="button" variant="outline" size="sm" onClick={() => setEditandoProdutos(true)}>
+                          <Button type="button" variant="outline" size="sm" onClick={handleIniciarEdicaoProdutos} disabled={isProtocoloEncerrado}>
                             <Pencil size={14} className="mr-1" />
                             Editar produtos
                           </Button>
