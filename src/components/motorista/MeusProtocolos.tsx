@@ -9,7 +9,7 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Motorista, Produto, ObservacaoLog, FotosProtocolo } from '@/types';
 import { cn } from '@/lib/utils';
-import { BuscarProtocoloPdv } from './BuscarProtocoloPdv';
+import { BuscarProtocoloPdv, ProtocoloEncontrado } from './BuscarProtocoloPdv';
 import { EncerrarProtocoloModal } from './EncerrarProtocoloModal';
 
 interface MeusProtocolosProps {

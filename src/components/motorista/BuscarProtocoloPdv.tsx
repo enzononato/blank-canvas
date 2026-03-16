@@ -15,12 +15,12 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Motorista, Produto } from '@/types';
 
-interface ProtocoloEncontrado {
+export interface ProtocoloEncontrado {
   id: string;
   numero: string;
   data: string;
   hora: string;
-  status: string;
+  status: 'aberto' | 'em_andamento' | 'encerrado';
   tipo_reposicao: string | null;
   causa: string | null;
   codigo_pdv: string | null;
@@ -43,8 +43,9 @@ interface ProtocoloEncontrado {
 interface BuscarProtocoloPdvProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectProtocolo: (protocolo: ProtocoloEncontrado) => void;
+  onSelectProtocolo?: (protocolo: ProtocoloEncontrado) => void;
   motorista: Motorista;
+  selectionMode?: 'select' | 'view';
 }
 
 export function BuscarProtocoloPdv({ isOpen, onClose, onSelectProtocolo, motorista }: BuscarProtocoloPdvProps) {
