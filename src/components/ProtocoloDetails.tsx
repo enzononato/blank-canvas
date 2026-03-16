@@ -239,8 +239,8 @@ export function ProtocoloDetails({
       registro_dados: {
         numero: protocolo.numero,
         campo: 'produtos',
-        antes: protocolo.produtos || [],
-        depois: produtosSanitizados,
+        antes: antes,
+        depois: depois,
       },
       usuario_nome: user.nome,
       usuario_role: user.nivel,
