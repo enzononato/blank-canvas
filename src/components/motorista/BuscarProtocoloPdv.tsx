@@ -132,7 +132,7 @@ export function BuscarProtocoloPdv({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Search className="w-5 h-5 text-primary" />
-            Buscar Reposição por PDV
+            {selectionMode === 'view' ? 'Consultar Reposição do PDV' : 'Buscar Reposição por PDV'}
           </DialogTitle>
         </DialogHeader>
 
