@@ -805,27 +805,6 @@ Lançado: ${protocolo.lancado ? 'Sim' : 'Não'}
                   <Download size={14} />
                   Download
                 </Button>
-                <Button 
-                  onClick={handleDiscutirProtocolo} 
-                  variant="default" 
-                  size="sm" 
-                  className="h-7 gap-1.5 text-xs shadow-sm bg-primary hover:bg-primary/90"
-                >
-                  <MessageCircle size={14} />
-                  Discutir Protocolo
-                </Button>
-                {/* Botão Alertar Distribuição - apenas para conferentes */}
-                {isConferente && protocolo.status !== 'encerrado' && (
-                  <Button 
-                    onClick={handleAlertarDistribuicao} 
-                    variant="outline" 
-                    size="sm" 
-                    className="h-7 gap-1.5 text-xs shadow-sm border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
-                  >
-                    <AlertTriangle size={14} />
-                    Alertar Distribuição
-                  </Button>
-                )}
               </div>
             </DialogHeader>
           </div>

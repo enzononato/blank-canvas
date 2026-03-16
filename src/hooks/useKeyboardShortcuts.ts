@@ -30,12 +30,6 @@ export function useKeyboardShortcuts() {
       action: () => navigate('/protocolos'),
     },
     {
-      key: 'c',
-      alt: true,
-      description: 'Ir para Chat',
-      action: () => navigate('/chat'),
-    },
-    {
       key: 'm',
       alt: true,
       description: 'Ir para Motoristas',
