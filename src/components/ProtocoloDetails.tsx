@@ -1244,20 +1244,18 @@ Lançado: ${protocolo.lancado ? 'Sim' : 'Não'}
                           <tr key={index} className="border-b border-slate-200 dark:border-slate-700 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-800/30 align-top">
                             <td className="px-2.5 py-1.5 text-foreground border-r border-slate-200 dark:border-slate-700">
                               {editandoProdutos ? (
-                                <Input
-                                  value={produto.codigo}
-                                  onChange={(e) => updateProdutoEditado(index, 'codigo', e.target.value)}
-                                  className="h-8 min-w-24"
-                                />
+                                <div className="min-w-40">
+                                  <ProdutoAutocomplete
+                                    value={produto.codigo && produto.nome ? `${produto.codigo} - ${produto.nome}` : produto.nome}
+                                    onChange={(value, embalagem) => handleProdutoSelecionado(index, value, embalagem)}
+                                    className="h-8 text-sm"
+                                  />
+                                </div>
                               ) : produto.codigo}
                             </td>
                             <td className="px-2.5 py-1.5 text-foreground border-r border-slate-200 dark:border-slate-700">
                               {editandoProdutos ? (
-                                <Input
-                                  value={produto.nome}
-                                  onChange={(e) => updateProdutoEditado(index, 'nome', e.target.value)}
-                                  className="h-8 min-w-40"
-                                />
+                                <span className="text-xs text-muted-foreground">{produto.nome || 'Selecione um produto na lista'}</span>
                               ) : produto.nome}
                             </td>
                             <td className="px-2.5 py-1.5 text-foreground border-r border-slate-200 dark:border-slate-700">
