@@ -4,12 +4,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FileText, Clock, CheckCircle, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Package, Plus, XCircle, MessageSquare, MessageCircle, Copy, Check } from 'lucide-react';
+import { FileText, Clock, CheckCircle, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Package, Plus, XCircle, MessageSquare, MessageCircle, Copy, Check, History } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Motorista, Produto, ObservacaoLog, FotosProtocolo } from '@/types';
 import { cn } from '@/lib/utils';
-import { BuscarProtocoloPdv } from './BuscarProtocoloPdv';
+import { BuscarProtocoloPdv, ProtocoloEncontrado } from './BuscarProtocoloPdv';
 import { EncerrarProtocoloModal } from './EncerrarProtocoloModal';
 
 interface MeusProtocolosProps {
@@ -47,6 +47,53 @@ interface ProtocoloSimples {
 // Verificar se protocolo foi reaberto
 const foiReaberto = (observacoesLog?: ObservacaoLog[]): boolean => {
   return !!observacoesLog?.some(log => log.acao === 'Reabriu o protocolo');
+};
+
+const HISTORICO_MOTORISTA_ACOES = [
+  'Abriu protocolo',
+  'Criou protocolo',
+  'Alterou produtos',
+  'Alterou produtos do protocolo',
+  'Entrega parcial',
+  'Encerrou o protocolo (entrega final)',
+] as const;
+
+const getHistoricoMotorista = (observacoesLog?: ObservacaoLog[], status?: ProtocoloSimples['status']) => {
+  const logs = observacoesLog || [];
+
+  return logs.filter((log) => {
+    if (status === 'encerrado') return false;
+
+    if (log.acao === 'Encerrou o protocolo (entrega final)') {
+      return status === 'em_andamento';
+    }
+
+    return HISTORICO_MOTORISTA_ACOES.includes(log.acao as typeof HISTORICO_MOTORISTA_ACOES[number]);
+  });
+};
+
+const formatarTextoHistoricoMotorista = (log: ObservacaoLog) => {
+  const texto = (log.texto || '').trim();
+
+  if (log.acao !== 'Alterou produtos do protocolo' && log.acao !== 'Alterou produtos') {
+    return {
+      titulo: log.acao,
+      detalhes: texto ? [texto] : [],
+    };
+  }
+
+  const linhas = texto
+    .split(/\r?\n/)
+    .map((linha) => linha.trim())
+    .filter(Boolean);
+
+  const titulo = linhas[0]?.replace(/[:\-]+$/, '') || 'Produtos alterados';
+  const detalhes = linhas.slice(1);
+
+  return {
+    titulo,
+    detalhes: detalhes.length > 0 ? detalhes : (texto ? [texto] : []),
+  };
 };
 
 // Constrói a mensagem de texto para o protocolo
@@ -153,6 +200,7 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
   // Modal states
   const [showBuscaPdv, setShowBuscaPdv] = useState(false);
   const [showEncerrarModal, setShowEncerrarModal] = useState(false);
+  const [modoBuscaPdv, setModoBuscaPdv] = useState<'select' | 'view'>('select');
   const [protocoloParaEncerrar, setProtocoloParaEncerrar] = useState<ProtocoloSimples | null>(null);
 
   const handleCopiarMensagem = (protocolo: ProtocoloSimples) => {
@@ -355,6 +403,7 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
     return protocolos.map((protocolo) => {
       const isExpanded = expandedId === protocolo.id;
       const produtos = Array.isArray(protocolo.produtos) ? protocolo.produtos as Produto[] : null;
+      const historicoFiltrado = getHistoricoMotorista(protocolo.observacoes_log as ObservacaoLog[], protocolo.status);
 
       return (
         <Card 
@@ -469,6 +518,41 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
                           </span>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {(protocolo.status === 'aberto' || protocolo.status === 'em_andamento') && historicoFiltrado.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <History className="w-3.5 h-3.5" />
+                      <span>Histórico da reposição</span>
+                    </div>
+                    <div className="bg-muted/50 rounded-md p-2 space-y-2">
+                      {historicoFiltrado.map((log) => {
+                        const historicoFormatado = formatarTextoHistoricoMotorista(log);
+
+                        return (
+                          <div key={log.id} className="border-l-2 border-border pl-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-[11px] font-medium text-foreground">{historicoFormatado.titulo}</p>
+                              <span className="text-[10px] text-muted-foreground shrink-0">
+                                {log.data} às {log.hora}
+                              </span>
+                            </div>
+
+                            {historicoFormatado.detalhes.length > 0 && (
+                              <div className="mt-1 space-y-1">
+                                {historicoFormatado.detalhes.map((detalhe, index) => (
+                                  <p key={`${log.id}-${index}`} className="text-[11px] leading-relaxed text-muted-foreground">
+                                    {/^[-•]/.test(detalhe) ? detalhe : `• ${detalhe}`}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -615,8 +699,10 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
     });
   };
 
-  const handleProtocoloEncontrado = (protocolo: ProtocoloSimples) => {
-    setProtocoloParaEncerrar(protocolo);
+  const handleProtocoloEncontrado = (protocolo: ProtocoloEncontrado) => {
+    if (modoBuscaPdv === 'view') return;
+
+    setProtocoloParaEncerrar(protocolo as unknown as ProtocoloSimples);
     setShowEncerrarModal(true);
   };
 
@@ -679,13 +765,16 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
           {protocolos.length} protocolo{protocolos.length !== 1 ? 's' : ''} encontrado{protocolos.length !== 1 ? 's' : ''}
         </p>
         <div className="flex items-center gap-1">
-          {filtroStatus === 'em_andamento' && (
+          {(filtroStatus === 'em_andamento' || filtroStatus === 'abertos') && (
             <Button
               variant="outline"
               size="icon"
               className="h-8 w-8"
-              onClick={() => setShowBuscaPdv(true)}
-              title="Buscar por PDV"
+              onClick={() => {
+                setModoBuscaPdv(filtroStatus === 'abertos' ? 'view' : 'select');
+                setShowBuscaPdv(true);
+              }}
+              title={filtroStatus === 'abertos' ? 'Consultar status da reposição por PDV' : 'Buscar por PDV'}
             >
               <Plus className="w-4 h-4" />
             </Button>
@@ -710,8 +799,9 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
       <BuscarProtocoloPdv
         isOpen={showBuscaPdv}
         onClose={() => setShowBuscaPdv(false)}
-        onSelectProtocolo={handleProtocoloEncontrado as any}
+        onSelectProtocolo={handleProtocoloEncontrado}
         motorista={motorista}
+        selectionMode={modoBuscaPdv}
       />
 
       {/* Modal de Encerramento */}
