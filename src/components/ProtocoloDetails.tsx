@@ -221,9 +221,13 @@ export function ProtocoloDetails({
       observacao: String(produto.observacao || '').trim() || undefined,
     }));
 
-    const possuiInvalido = produtosSanitizados.some((produto) => !produto.nome || !produto.unidade || produto.quantidade <= 0);
+    const possuiInvalido = produtosSanitizados.some((produto) => (
+      !produto.nome ||
+      !['UN', 'CX', 'PCT'].includes(produto.unidade) ||
+      produto.quantidade <= 0
+    ));
     if (possuiInvalido) {
-      toast.error('Preencha produto, unidade e quantidade válida em todos os itens.');
+      toast.error('Preencha produto, unidade válida (UN, CX ou PCT) e quantidade válida em todos os itens.');
       return;
     }
 
