@@ -174,12 +174,13 @@ export function ProtocoloDetails({
 
   const handleProdutoSelecionado = (index: number, value: string, embalagem?: string) => {
     const [codigo, ...nomeParts] = value.split(' - ');
-    const nome = nomeParts.join(' - ');
+    const nome = nomeParts.join(' - ').trim();
+    const digitandoLivre = !nomeParts.length;
 
     setProdutosEditados((prev) => prev.map((produto, i) => i === index ? {
       ...produto,
-      codigo: (nome ? codigo : produto.codigo) || '',
-      nome: nome || value,
+      codigo: digitandoLivre ? '' : codigo.trim(),
+      nome: digitandoLivre ? value : nome,
       unidade: embalagem || produto.unidade || 'UND',
     } : produto));
   };
