@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FileText, Clock, CheckCircle, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Package, Plus, XCircle, MessageSquare, MessageCircle, Copy, Check } from 'lucide-react';
+import { FileText, Clock, CheckCircle, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Package, Plus, XCircle, MessageSquare, MessageCircle, Copy, Check, History } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Motorista, Produto, ObservacaoLog, FotosProtocolo } from '@/types';
@@ -47,6 +47,28 @@ interface ProtocoloSimples {
 // Verificar se protocolo foi reaberto
 const foiReaberto = (observacoesLog?: ObservacaoLog[]): boolean => {
   return !!observacoesLog?.some(log => log.acao === 'Reabriu o protocolo');
+};
+
+const HISTORICO_MOTORISTA_ACOES = [
+  'Abriu protocolo',
+  'Criou protocolo',
+  'Alterou produtos',
+  'Entrega parcial',
+  'Encerrou o protocolo (entrega final)',
+] as const;
+
+const getHistoricoMotorista = (observacoesLog?: ObservacaoLog[], status?: ProtocoloSimples['status']) => {
+  const logs = observacoesLog || [];
+
+  return logs.filter((log) => {
+    if (status === 'encerrado') return false;
+
+    if (log.acao === 'Encerrou o protocolo (entrega final)') {
+      return status === 'em_andamento';
+    }
+
+    return HISTORICO_MOTORISTA_ACOES.includes(log.acao as typeof HISTORICO_MOTORISTA_ACOES[number]);
+  });
 };
 
 // Constrói a mensagem de texto para o protocolo
@@ -356,6 +378,7 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
     return protocolos.map((protocolo) => {
       const isExpanded = expandedId === protocolo.id;
       const produtos = Array.isArray(protocolo.produtos) ? protocolo.produtos as Produto[] : null;
+      const historicoFiltrado = getHistoricoMotorista(protocolo.observacoes_log as ObservacaoLog[], protocolo.status);
 
       return (
         <Card 
@@ -468,6 +491,28 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
                           <span className="text-muted-foreground shrink-0 ml-2">
                             {prod.quantidade} {prod.unidade}
                           </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {(protocolo.status === 'aberto' || protocolo.status === 'em_andamento') && historicoFiltrado.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <History className="w-3.5 h-3.5" />
+                      <span>Histórico da reposição</span>
+                    </div>
+                    <div className="bg-muted/50 rounded-md p-2 space-y-2">
+                      {historicoFiltrado.map((log) => (
+                        <div key={log.id} className="border-l-2 border-border pl-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-[11px] font-medium text-foreground">{log.acao}</p>
+                            <span className="text-[10px] text-muted-foreground shrink-0">
+                              {log.data} às {log.hora}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">{log.texto}</p>
                         </div>
                       ))}
                     </div>
