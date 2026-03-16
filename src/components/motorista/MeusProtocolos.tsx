@@ -378,6 +378,7 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
     return protocolos.map((protocolo) => {
       const isExpanded = expandedId === protocolo.id;
       const produtos = Array.isArray(protocolo.produtos) ? protocolo.produtos as Produto[] : null;
+      const historicoFiltrado = getHistoricoMotorista(protocolo.observacoes_log as ObservacaoLog[], protocolo.status);
 
       return (
         <Card 
