@@ -279,7 +279,7 @@ export default function AlteracaoPedidos() {
         await fetch(WEBHOOK_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...rows[i], log_id: logId }),
+          body: JSON.stringify({ ...rows[i], log_id: logId, id_alteracao: logId }),
           signal: controller.signal,
         });
 
