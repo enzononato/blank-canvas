@@ -209,6 +209,7 @@ export default function AlteracaoPedidos() {
           status_pedido: row.status_pedido,
           mensagem_cliente: row.mensagem_cliente,
           log_id: row.id,
+          id_alteracao: row.id,
         }),
       });
 
