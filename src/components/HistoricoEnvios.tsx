@@ -235,11 +235,23 @@ export default function HistoricoEnvios() {
           {/* Tabela de Erros */}
           <Card className="border-destructive/30">
             <CardHeader className="py-3 px-4">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <AlertTriangle size={14} className="text-destructive" />
-                Erros
-                <Badge variant="destructive" className="text-xs">{errorLogs.length}</Badge>
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <AlertTriangle size={14} className="text-destructive" />
+                  Erros
+                  <Badge variant="destructive" className="text-xs">{errorLogs.length}</Badge>
+                </CardTitle>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs px-2"
+                  onClick={handleDownloadErrorsCsv}
+                  disabled={errorLogs.length === 0}
+                >
+                  <Download className="h-3 w-3 mr-1" />
+                  CSV
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="px-2 pb-2">
               <ScrollArea className="h-[400px]">
