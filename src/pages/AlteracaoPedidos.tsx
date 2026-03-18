@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
@@ -130,6 +130,40 @@ export default function AlteracaoPedidos() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [isPolling, setIsPolling] = useState(false);
+
+  // Auto-polling: after send completes, poll every 5s for 60s to catch async n8n updates
+  const startPolling = useCallback((ids: string[]) => {
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    setIsPolling(true);
+    let elapsed = 0;
+    const interval = setInterval(async () => {
+      elapsed += 5000;
+      if (elapsed > 60000) {
+        clearInterval(interval);
+        pollIntervalRef.current = null;
+        setIsPolling(false);
+        return;
+      }
+      try {
+        const { data } = await supabase
+          .from('alteracao_pedidos_log')
+          .select('id, cod_pdv, nome_pdv, telefone_pdv, status_pedido, mensagem_cliente, sucesso, erro_mensagem, created_at')
+          .in('id', ids);
+        if (data) setLogRows(data as LogRow[]);
+      } catch (e) {
+        console.error('Erro no polling:', e);
+      }
+    }, 5000);
+    pollIntervalRef.current = interval;
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
+  }, []);
 
   const handleFile = (f: File) => {
     if (!f.name.endsWith('.csv')) {
@@ -289,12 +323,14 @@ export default function AlteracaoPedidos() {
       }
 
       setBatchIds(ids);
-      toast.success('Todos os dados foram enviados! Consulte o status abaixo.');
+      toast.success('Envio concluído! Atualizando status automaticamente...');
       setFile(null);
       setProgress({ current: 0, total: 0 });
       if (fileInputRef.current) fileInputRef.current.value = '';
 
       await fetchLogs(ids);
+      // Start auto-polling to catch async webhook results
+      startPolling(ids);
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         toast.warning(`Envio interrompido. ${progress.current} de ${progress.total} enviado(s).`);
@@ -449,6 +485,12 @@ export default function AlteracaoPedidos() {
                 )}
                 Atualizar Status
               </Button>
+              {isPolling && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Atualizando automaticamente...
+                </span>
+              )}
             </div>
             <CardDescription>
               <span className="text-green-600 font-medium">{successRows.length} sucesso(s)</span>
