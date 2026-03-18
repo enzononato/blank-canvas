@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, RefreshCw, Loader2, AlertTriangle, CheckCircle2, RotateCcw, History } from 'lucide-react';
+import { CalendarIcon, RefreshCw, Loader2, AlertTriangle, CheckCircle2, RotateCcw, History, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
