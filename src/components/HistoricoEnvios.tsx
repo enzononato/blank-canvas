@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarIcon, RefreshCw, Loader2, AlertTriangle, CheckCircle2, RotateCcw, History } from 'lucide-react';
+import { CalendarIcon, RefreshCw, Loader2, AlertTriangle, CheckCircle2, RotateCcw, History, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -119,6 +119,34 @@ export default function HistoricoEnvios() {
     }
   };
 
+  const handleDownloadErrorsCsv = () => {
+    if (errorLogs.length === 0) {
+      toast.error('Nenhum erro para exportar');
+      return;
+    }
+    const headers = ['Data', 'Cod. PDV', 'Nome PDV', 'Telefone PDV', 'Status Pedido', 'Mensagem Cliente', 'Erro'];
+    const rows = errorLogs.map(r => [
+      formatDate(r.created_at),
+      r.cod_pdv,
+      r.nome_pdv || '',
+      r.telefone_pdv || '',
+      r.status_pedido || '',
+      r.mensagem_cliente || '',
+      r.erro_mensagem || '',
+    ]);
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `erros_envio_${format(new Date(), 'yyyy-MM-dd_HHmm')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('CSV de erros baixado!');
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -207,11 +235,23 @@ export default function HistoricoEnvios() {
           {/* Tabela de Erros */}
           <Card className="border-destructive/30">
             <CardHeader className="py-3 px-4">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <AlertTriangle size={14} className="text-destructive" />
-                Erros
-                <Badge variant="destructive" className="text-xs">{errorLogs.length}</Badge>
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <AlertTriangle size={14} className="text-destructive" />
+                  Erros
+                  <Badge variant="destructive" className="text-xs">{errorLogs.length}</Badge>
+                </CardTitle>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs px-2"
+                  onClick={handleDownloadErrorsCsv}
+                  disabled={errorLogs.length === 0}
+                >
+                  <Download className="h-3 w-3 mr-1" />
+                  CSV
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="px-2 pb-2">
               <ScrollArea className="h-[400px]">
