@@ -110,11 +110,11 @@ export function BuscarProtocoloPdv({
   };
 
   const handleSelectProtocolo = (protocolo: ProtocoloEncontrado) => {
-    if (selectionMode === 'view') {
-      setProtocoloExpandidoId((current) => current === protocolo.id ? null : protocolo.id);
-      return;
-    }
+    setProtocoloExpandidoId((current) => current === protocolo.id ? null : protocolo.id);
+  };
 
+  const handleConfirmSelect = (e: React.MouseEvent, protocolo: ProtocoloEncontrado) => {
+    e.stopPropagation();
     onSelectProtocolo?.(protocolo);
     handleClose();
   };
