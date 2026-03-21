@@ -716,7 +716,8 @@ export default function Usuarios() {
                       </div>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
