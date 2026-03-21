@@ -1075,7 +1075,7 @@ export default function MotoristaPortal() {
             <button
               onClick={() => setActiveTab('novo')}
               className={cn(
-                "w-full h-14 rounded-xl text-[15px] font-semibold flex items-center justify-center gap-2 transition-all duration-200 border",
+                "w-full h-11 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 transition-all duration-200 border",
                 activeTab === 'novo'
                   ? "bg-primary text-primary-foreground shadow-md border-primary"
                   : "bg-background text-muted-foreground border-border/40 hover:bg-muted/50"
