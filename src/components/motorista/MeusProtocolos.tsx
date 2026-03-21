@@ -308,27 +308,27 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
     switch (status) {
       case 'aberto':
         return (
-          <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/30 text-[10px] px-1.5 py-0.5">
-            <Clock className="w-2.5 h-2.5 mr-0.5" />
+          <Badge variant="outline" className="bg-yellow-500/15 text-yellow-600 border-yellow-500/40 text-[11px] px-2.5 py-1 font-semibold">
+            <Clock className="w-3 h-3 mr-1" />
             Aberto
           </Badge>
         );
       case 'em_andamento':
         return (
-          <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30 text-[10px] px-1.5 py-0.5">
-            <AlertCircle className="w-2.5 h-2.5 mr-0.5" />
+          <Badge variant="outline" className="bg-blue-500/15 text-blue-600 border-blue-500/40 text-[11px] px-2.5 py-1 font-semibold">
+            <AlertCircle className="w-3 h-3 mr-1" />
             Em Andamento
           </Badge>
         );
       case 'encerrado':
         return (
-          <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30 text-[10px] px-1.5 py-0.5">
-            <CheckCircle className="w-2.5 h-2.5 mr-0.5" />
+          <Badge variant="outline" className="bg-green-500/15 text-green-600 border-green-500/40 text-[11px] px-2.5 py-1 font-semibold">
+            <CheckCircle className="w-3 h-3 mr-1" />
             Encerrado
           </Badge>
         );
       default:
-        return <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">{status}</Badge>;
+        return <Badge variant="outline" className="text-[11px] px-2.5 py-1">{status}</Badge>;
     }
   };
 
