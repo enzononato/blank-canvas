@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useUnidadesDB } from '@/hooks/useUnidadesDB';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuditLog } from '@/hooks/useAuditLog';
@@ -104,8 +105,10 @@ export default function Sobras() {
   const [sobras, setSobras] = useState<SobraProtocolo[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroStatus, setFiltroStatus] = useState('todos');
+  const [filtroUnidade, setFiltroUnidade] = useState('todas');
   const [busca, setBusca] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const { unidades } = useUnidadesDB();
   const [totalCount, setTotalCount] = useState(0);
   const [contadores, setContadores] = useState({ pendente: 0, tratamento: 0, resolvido: 0 });
   const [detalheSobra, setDetalheSobra] = useState<SobraProtocolo | null>(null);
@@ -137,6 +140,10 @@ export default function Sobras() {
         query = query.eq('status', filtroStatus);
       }
 
+      if (filtroUnidade !== 'todas') {
+        query = query.eq('motorista_unidade', filtroUnidade);
+      }
+
       if (busca.trim()) {
         query = query.or(`numero.ilike.%${busca.trim()}%,motorista_nome.ilike.%${busca.trim()}%,mapa.ilike.%${busca.trim()}%,codigo_pdv.ilike.%${busca.trim()}%`);
       }
@@ -155,7 +162,7 @@ export default function Sobras() {
     } finally {
       setLoading(false);
     }
-  }, [filtroStatus, busca, currentPage]);
+  }, [filtroStatus, filtroUnidade, busca, currentPage]);
 
   useEffect(() => {
     fetchSobras();
@@ -317,6 +324,17 @@ export default function Sobras() {
           <SelectContent>
             {STATUS_OPTIONS.map(opt => (
               <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={filtroUnidade} onValueChange={(v) => { setFiltroUnidade(v); setCurrentPage(1); }}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder="Unidade" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todas">Todas as Unidades</SelectItem>
+            {unidades.map(u => (
+              <SelectItem key={u.id} value={u.nome}>{u.nome}</SelectItem>
             ))}
           </SelectContent>
         </Select>
