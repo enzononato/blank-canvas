@@ -15,7 +15,7 @@ import { PdvAutocomplete } from '@/components/PdvAutocomplete';
 import { toast } from '@/hooks/use-toast';
 import { Motorista } from '@/types';
 import { cn } from '@/lib/utils';
-import { Loader2, CheckCircle, MapPin, FileText, Tag, AlertTriangle, Camera, X, ImageIcon } from 'lucide-react';
+import { Loader2, CheckCircle, MapPin, FileText, Tag, AlertTriangle, Camera, X, ImageIcon, MessageCircle, Copy, Check, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { compressImage } from '@/utils/imageCompression';
 import { uploadFotoParaStorage } from '@/utils/uploadFotoStorage';
