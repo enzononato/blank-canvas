@@ -120,7 +120,7 @@ export default function MotoristaLogin() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="identificador" className="text-sm font-semibold text-foreground">
-                CPF
+                CPF ou Código
               </Label>
               <div className="relative">
                 <Input
