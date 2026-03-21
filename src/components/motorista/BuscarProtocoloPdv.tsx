@@ -199,9 +199,15 @@ export function BuscarProtocoloPdv({
                         {protocolo.numero}
                       </span>
                     </div>
-                    <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30 text-[10px] shrink-0 whitespace-nowrap">
-                      Em Atendimento
-                    </Badge>
+                    {statusFilter === 'aberto' ? (
+                      <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/30 text-[10px] shrink-0 whitespace-nowrap">
+                        Aberto
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30 text-[10px] shrink-0 whitespace-nowrap">
+                        Em Atendimento
+                      </Badge>
+                    )}
                   </div>
 
                   {/* Info grid */}
@@ -246,14 +252,16 @@ export function BuscarProtocoloPdv({
                   )}
 
 
-                  {/* Botão encerrar */}
-                  <Button
-                    className="w-full mt-4 h-11 text-sm font-semibold flex items-center justify-center gap-2"
-                    onClick={(e) => handleConfirmSelect(e, protocolo)}
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    Encerrar Reposição
-                  </Button>
+                  {/* Botão encerrar - apenas para em_andamento */}
+                  {selectionMode !== 'view' && (
+                    <Button
+                      className="w-full mt-4 h-11 text-sm font-semibold flex items-center justify-center gap-2"
+                      onClick={(e) => handleConfirmSelect(e, protocolo)}
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      Encerrar Reposição
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             );
