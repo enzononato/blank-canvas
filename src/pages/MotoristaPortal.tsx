@@ -38,6 +38,7 @@ import { PdvAutocomplete } from '@/components/PdvAutocomplete';
 import { MeusProtocolos } from '@/components/motorista/MeusProtocolos';
 import { PosRota } from '@/components/motorista/PosRota';
 import { MotoristaHeader } from '@/components/motorista/MotoristaHeader';
+import { DailySummary } from '@/components/motorista/DailySummary';
 import CameraCapture from '@/components/CameraCapture';
 
 interface ProdutoForm {
