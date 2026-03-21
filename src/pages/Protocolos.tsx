@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Protocolo, ObservacaoLog } from '@/types';
 import { useProtocolos } from '@/contexts/ProtocolosContext';
@@ -107,37 +107,12 @@ export default function Protocolos() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
-  // Processar parâmetros da URL (sem reprocessar estados já iguais)
+  // Hydration lock: prevents rendering stale data before URL params are applied
+  const isHydrated = useRef(false);
+  
   useEffect(() => {
-    const statusParam = searchParams.get('status');
-    const periodoParam = searchParams.get('periodo');
-    const tipoParam = searchParams.get('tipo');
-    const unidadeParam = searchParams.get('unidade');
-
-    if (statusParam && statusParam !== activeTab) {
-      setActiveTab(statusParam);
-    }
-
-    if (periodoParam && periodoParam !== periodoFilter) {
-      setPeriodoFilter(periodoParam);
-    }
-
-    if (tipoParam) {
-      if (tipoParam !== tipoFilter) {
-        setTipoFilter(tipoParam);
-      }
-      if (!showFilters) {
-        setShowFilters(true);
-      }
-    }
-
-    if (unidadeParam && isAdmin) {
-      const unidadesFromUrl = unidadeParam.split(',').map(u => u.trim()).filter(Boolean);
-      if (JSON.stringify(unidadesFromUrl) !== JSON.stringify(unidadesFiltro)) {
-        setUnidadesFiltro(unidadesFromUrl);
-      }
-    }
-  }, [searchParams, isAdmin, activeTab, periodoFilter, tipoFilter, unidadesFiltro, showFilters]);
+    isHydrated.current = true;
+  }, []);
 
   // Abrir protocolo por ID quando protocolos estiverem carregados (apenas uma vez)
   useEffect(() => {
