@@ -163,17 +163,15 @@ export default function Protocolos() {
       if (p.oculto) return false;
       
       // Filtrar por unidade do motorista
-      // Se o usuário não é admin, filtra pela unidade do usuário
-      // Se é admin e tem filtro selecionado, aplica o filtro
       if (!isAdmin) {
         const userUnidades = (user?.unidade || '').split(',').map(u => u.trim());
-        if (unidadeFilter !== 'todas') {
-          if (unidadeFilter !== p.unidadeNome || !userUnidades.includes(p.unidadeNome)) return false;
+        if (unidadesFiltro.length > 0) {
+          if (!unidadesFiltro.includes(p.unidadeNome || '') || !userUnidades.includes(p.unidadeNome || '')) return false;
         } else {
-          if (!userUnidades.includes(p.unidadeNome)) return false;
+          if (!userUnidades.includes(p.unidadeNome || '')) return false;
         }
-      } else if (unidadeFilter !== 'todas') {
-        if (unidadeFilter !== p.unidadeNome) return false;
+      } else if (unidadesFiltro.length > 0) {
+        if (!unidadesFiltro.includes(p.unidadeNome || '')) return false;
       }
       
       const searchMatch = 
