@@ -1013,6 +1013,7 @@ export default function Dashboard() {
                       <span className="text-[11px] font-medium text-muted-foreground">{protocolo.unidadeNome || '—'}</span>
                     </td>
                     <td className="p-2 text-muted-foreground text-[11px]">{protocolo.data}</td>
+                    <td className="p-2">
                       <StatusBadge status={protocolo.status} />
                     </td>
                     <td className="p-2 text-right">
