@@ -716,7 +716,7 @@ export default function Dashboard() {
       </div>
 
       {/* Estatísticas por Tipo */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         <StatCard
           title="Inversão"
           value={contagemPorTipo.inversao}
@@ -741,53 +741,30 @@ export default function Dashboard() {
           delay={500}
           href={buildHref("/protocolos?tipo=FALTA&status=todos")}
         />
-      </div>
-
-      {/* Sobras - Pós-Rota */}
-      <div className="card-stats animate-slide-up" style={{ animationDelay: '550ms' }}>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-purple-500/10">
-              <Warehouse className="text-purple-500" size={16} />
-            </div>
-            <div>
-              <h3 className="font-heading text-base font-semibold">Sobras — Pós-Rota</h3>
-              <p className="text-[10px] text-muted-foreground">Registros de sobras reportadas pelos motoristas</p>
-            </div>
-          </div>
-          <Link to={buildHref("/sobras")}>
-            <Button variant="outline" size="sm" className="h-7 text-xs">
-              <Eye size={12} className="mr-1" />
-              Ver Todas
-            </Button>
-          </Link>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <Link to={buildHref("/sobras")} className="flex flex-col items-center p-3 rounded-xl bg-purple-500/5 hover:bg-purple-500/10 border border-purple-500/10 transition-colors cursor-pointer">
-            <span className="text-2xl font-bold text-purple-600 dark:text-purple-400">{sobrasStats.total}</span>
-            <span className="text-[10px] text-muted-foreground font-medium">Total</span>
-          </Link>
-          <Link to={buildHref("/sobras?status=aberto")} className="flex flex-col items-center p-3 rounded-xl bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/10 transition-colors cursor-pointer">
-            <span className="text-2xl font-bold text-amber-600 dark:text-amber-400">{sobrasStats.pendente}</span>
-            <span className="text-[10px] text-muted-foreground font-medium">Pendentes</span>
-          </Link>
-          <Link to={buildHref("/sobras?status=em_andamento")} className="flex flex-col items-center p-3 rounded-xl bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/10 transition-colors cursor-pointer">
-            <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">{sobrasStats.tratamento}</span>
-            <span className="text-[10px] text-muted-foreground font-medium">Em Tratamento</span>
-          </Link>
-          <Link to={buildHref("/sobras?status=encerrado")} className="flex flex-col items-center p-3 rounded-xl bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/10 transition-colors cursor-pointer">
-            <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{sobrasStats.resolvido}</span>
-            <span className="text-[10px] text-muted-foreground font-medium">Resolvidas</span>
-          </Link>
-          <Link to={buildHref("/sobras")} className="flex flex-col items-center p-3 rounded-xl bg-purple-500/5 hover:bg-purple-500/10 border border-purple-500/10 transition-colors cursor-pointer">
-            <span className="text-2xl font-bold text-purple-600 dark:text-purple-400">{sobrasStats.erroCarregamento}</span>
-            <span className="text-[10px] text-muted-foreground font-medium text-center">Erro Carreg.</span>
-          </Link>
-          <Link to={buildHref("/sobras")} className="flex flex-col items-center p-3 rounded-xl bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 transition-colors cursor-pointer">
-            <span className="text-2xl font-bold text-red-600 dark:text-red-400">{sobrasStats.erroEntrega}</span>
-            <span className="text-[10px] text-muted-foreground font-medium text-center">Erro Entrega</span>
-          </Link>
-        </div>
+        <StatCard
+          title="Sobras Total"
+          value={sobrasStats.total}
+          icon={Warehouse}
+          variant="default"
+          delay={525}
+          href={buildHref("/sobras")}
+        />
+        <StatCard
+          title="Sobras Pendentes"
+          value={sobrasStats.pendente}
+          icon={Clock}
+          variant="warning"
+          delay={550}
+          href={buildHref("/sobras?status=aberto")}
+        />
+        <StatCard
+          title="Sobras Resolvidas"
+          value={sobrasStats.resolvido}
+          icon={CheckCircle}
+          variant="success"
+          delay={575}
+          href={buildHref("/sobras?status=encerrado")}
+        />
       </div>
 
       {/* Rankings + Alertas */}
