@@ -484,7 +484,7 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
                       <span className="font-mono text-sm font-bold text-foreground block truncate">
                         {protocolo.numero}
                       </span>
-                      {foiReaberto(protocolo.observacoes_log as ObservacaoLog[]) && (
+                      {foiReaberto(protocolo.observacoes_log) && (
                         <span className="inline-flex items-center gap-0.5 text-[9px] text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-500/20 px-1.5 py-0.5 rounded-full mt-0.5">
                           <RefreshCw size={9} />
                           Reaberto
