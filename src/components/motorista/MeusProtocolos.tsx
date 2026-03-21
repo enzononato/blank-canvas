@@ -268,18 +268,21 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
           .select('id', { count: 'exact', head: true })
           .eq('motorista_codigo', motorista.codigo)
           .eq('status', 'aberto')
+          .eq('ativo', true)
           .or('oculto.is.null,oculto.eq.false'),
         supabase
           .from('protocolos')
           .select('id', { count: 'exact', head: true })
           .eq('motorista_codigo', motorista.codigo)
           .eq('status', 'em_andamento')
+          .eq('ativo', true)
           .or('oculto.is.null,oculto.eq.false'),
         supabase
           .from('protocolos')
           .select('id', { count: 'exact', head: true })
           .eq('motorista_codigo', motorista.codigo)
           .eq('status', 'encerrado')
+          .eq('ativo', true)
           .or('oculto.is.null,oculto.eq.false'),
       ]);
 
