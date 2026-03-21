@@ -1311,8 +1311,8 @@ export default function MotoristaPortal() {
                           )}
                         </div>
                         <div className="space-y-2">
-                          <div className="space-y-1">
-                            <Label className="text-[10px] font-medium text-muted-foreground">Produto *</Label>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-medium text-muted-foreground">Produto *</Label>
                             <ProdutoAutocomplete
                               value={produto.produto}
                               onChange={(value, embalagem) => {
