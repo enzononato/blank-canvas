@@ -9,7 +9,7 @@ import { MultiSelectUnidade } from '@/components/ui/MultiSelectUnidade';
 import { useProtocolos } from '@/contexts/ProtocolosContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMotoristasDB } from '@/hooks/useMotoristasDB';
-import { FileText, CheckCircle, Clock, Truck, Calendar, Users, Building2, Package, Download, Eye, TrendingUp, MapPin, CalendarRange, X, RefreshCw, Repeat, AlertTriangle, PackageX, Timer } from 'lucide-react';
+import { FileText, CheckCircle, Clock, Truck, Calendar, Users, Building2, Package, Download, Eye, TrendingUp, MapPin, CalendarRange, X, RefreshCw, Repeat, AlertTriangle, PackageX, Timer, Warehouse } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { 
@@ -61,6 +61,7 @@ export default function Dashboard() {
   const [periodoFiltro, setPeriodoFiltro] = useState<PeriodoFiltro>('todos');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [sobrasStats, setSobrasStats] = useState({ total: 0, pendente: 0, tratamento: 0, resolvido: 0, erroCarregamento: 0, erroEntrega: 0 });
 
   // Protocolos filtrados por unidade e período
   const protocolosFiltrados = useMemo(() => {
@@ -313,6 +314,47 @@ export default function Dashboard() {
     };
     fetchPdvNames();
   }, [protocolosFiltrados]);
+
+  // Fetch sobras stats from database
+  useEffect(() => {
+    const fetchSobrasStats = async () => {
+      try {
+        let baseQuery = supabase
+          .from('protocolos')
+          .select('status, causa, motorista_unidade')
+          .eq('tipo_reposicao', 'pos_rota');
+
+        const { data, error } = await baseQuery;
+        if (error) throw error;
+
+        let filtered = data || [];
+        
+        // Apply unit filter
+        if (!isAdmin) {
+          const userUnidades = user?.unidade?.split(',').map(u => u.trim()) || [];
+          if (unidadesFiltro.length > 0) {
+            filtered = filtered.filter(s => s.motorista_unidade && unidadesFiltro.includes(s.motorista_unidade) && userUnidades.includes(s.motorista_unidade));
+          } else {
+            filtered = filtered.filter(s => s.motorista_unidade && userUnidades.includes(s.motorista_unidade));
+          }
+        } else if (unidadesFiltro.length > 0) {
+          filtered = filtered.filter(s => s.motorista_unidade && unidadesFiltro.includes(s.motorista_unidade));
+        }
+
+        setSobrasStats({
+          total: filtered.length,
+          pendente: filtered.filter(s => s.status === 'aberto').length,
+          tratamento: filtered.filter(s => s.status === 'em_andamento').length,
+          resolvido: filtered.filter(s => s.status === 'encerrado').length,
+          erroCarregamento: filtered.filter(s => s.causa?.toUpperCase().includes('ERRO DE CARREGAMENTO')).length,
+          erroEntrega: filtered.filter(s => s.causa?.toUpperCase().includes('ERRO DE ENTREGA')).length,
+        });
+      } catch (err) {
+        console.error('Erro ao buscar sobras stats:', err);
+      }
+    };
+    fetchSobrasStats();
+  }, [isAdmin, user?.unidade, unidadesFiltro]);
 
   // TOP 5 Clientes PDVs (calculado dos protocolos reais)
   const topClientesReal = useMemo(() => {
@@ -699,6 +741,53 @@ export default function Dashboard() {
           delay={500}
           href={buildHref("/protocolos?tipo=FALTA&status=todos")}
         />
+      </div>
+
+      {/* Sobras - Pós-Rota */}
+      <div className="card-stats animate-slide-up" style={{ animationDelay: '550ms' }}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-purple-500/10">
+              <Warehouse className="text-purple-500" size={16} />
+            </div>
+            <div>
+              <h3 className="font-heading text-base font-semibold">Sobras — Pós-Rota</h3>
+              <p className="text-[10px] text-muted-foreground">Registros de sobras reportadas pelos motoristas</p>
+            </div>
+          </div>
+          <Link to={buildHref("/sobras")}>
+            <Button variant="outline" size="sm" className="h-7 text-xs">
+              <Eye size={12} className="mr-1" />
+              Ver Todas
+            </Button>
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <Link to={buildHref("/sobras")} className="flex flex-col items-center p-3 rounded-xl bg-purple-500/5 hover:bg-purple-500/10 border border-purple-500/10 transition-colors cursor-pointer">
+            <span className="text-2xl font-bold text-purple-600 dark:text-purple-400">{sobrasStats.total}</span>
+            <span className="text-[10px] text-muted-foreground font-medium">Total</span>
+          </Link>
+          <Link to={buildHref("/sobras?status=aberto")} className="flex flex-col items-center p-3 rounded-xl bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/10 transition-colors cursor-pointer">
+            <span className="text-2xl font-bold text-amber-600 dark:text-amber-400">{sobrasStats.pendente}</span>
+            <span className="text-[10px] text-muted-foreground font-medium">Pendentes</span>
+          </Link>
+          <Link to={buildHref("/sobras?status=em_andamento")} className="flex flex-col items-center p-3 rounded-xl bg-blue-500/5 hover:bg-blue-500/10 border border-blue-500/10 transition-colors cursor-pointer">
+            <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">{sobrasStats.tratamento}</span>
+            <span className="text-[10px] text-muted-foreground font-medium">Em Tratamento</span>
+          </Link>
+          <Link to={buildHref("/sobras?status=encerrado")} className="flex flex-col items-center p-3 rounded-xl bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/10 transition-colors cursor-pointer">
+            <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{sobrasStats.resolvido}</span>
+            <span className="text-[10px] text-muted-foreground font-medium">Resolvidas</span>
+          </Link>
+          <Link to={buildHref("/sobras")} className="flex flex-col items-center p-3 rounded-xl bg-purple-500/5 hover:bg-purple-500/10 border border-purple-500/10 transition-colors cursor-pointer">
+            <span className="text-2xl font-bold text-purple-600 dark:text-purple-400">{sobrasStats.erroCarregamento}</span>
+            <span className="text-[10px] text-muted-foreground font-medium text-center">Erro Carreg.</span>
+          </Link>
+          <Link to={buildHref("/sobras")} className="flex flex-col items-center p-3 rounded-xl bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 transition-colors cursor-pointer">
+            <span className="text-2xl font-bold text-red-600 dark:text-red-400">{sobrasStats.erroEntrega}</span>
+            <span className="text-[10px] text-muted-foreground font-medium text-center">Erro Entrega</span>
+          </Link>
+        </div>
       </div>
 
       {/* Rankings + Alertas */}
