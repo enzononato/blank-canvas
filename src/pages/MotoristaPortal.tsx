@@ -1453,13 +1453,13 @@ export default function MotoristaPortal() {
 
             {/* Seção: Contato */}
             <div className="bg-card rounded-xl shadow-sm border border-border/50 overflow-hidden">
-              <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-3 py-2 border-b border-border/30">
-                <h3 className="text-sm font-medium text-foreground flex items-center gap-1.5">
-                  <Phone className="h-3.5 w-3.5 text-primary" />
+              <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-3 border-b border-border/30">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-primary" />
                   Contato
                 </h3>
               </div>
-              <div className="p-3 space-y-2">
+              <div className="p-4 space-y-4">
                     <div className="space-y-1" data-tour="campo-whatsapp">
                       <Label htmlFor="whatsappContato" className="text-[10px] font-medium text-muted-foreground">
                         WhatsApp *
