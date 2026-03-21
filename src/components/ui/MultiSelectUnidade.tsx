@@ -28,17 +28,25 @@ export function MultiSelectUnidade({
   const allSelected = selected.length === unidades.length;
 
   const handleToggleAll = () => {
-    // Sempre limpa → volta para "Todas"
     onChange([]);
   };
 
   const handleToggle = (nome: string) => {
-    if (selected.includes(nome)) {
+    if (noneSelected) {
+      // "Todas" está ativo → desmarcar uma = selecionar todas EXCETO esta
+      const allExcept = unidades.map(u => u.nome).filter(n => n !== nome);
+      onChange(allExcept);
+    } else if (selected.includes(nome)) {
       const newSelected = selected.filter(s => s !== nome);
       onChange(newSelected);
     } else {
       const newSelected = [...selected, nome];
-      onChange(newSelected);
+      // Se selecionou todas individualmente, volta para [] (= "Todas")
+      if (newSelected.length === unidades.length) {
+        onChange([]);
+      } else {
+        onChange(newSelected);
+      }
     }
   };
 
