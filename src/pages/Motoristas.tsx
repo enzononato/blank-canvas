@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { unidades } from '@/data/mockData';
 import { Motorista, FuncaoMotorista, SetorMotorista } from '@/types';
 import { SearchInput } from '@/components/ui/SearchInput';
