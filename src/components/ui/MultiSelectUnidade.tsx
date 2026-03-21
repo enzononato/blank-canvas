@@ -43,7 +43,7 @@ export function MultiSelectUnidade({
   };
 
   const isChecked = (nome: string) => {
-    return selected.includes(nome);
+    return noneSelected || selected.includes(nome);
   };
 
   const displayText = () => {
