@@ -180,7 +180,7 @@ export function BuscarProtocoloPdv({
 
           {!isSearching && resultados.map((protocolo) => {
             const produtos = Array.isArray(protocolo.produtos) ? protocolo.produtos as Produto[] : [];
-            const isExpanded = protocoloExpandidoId === protocolo.id;
+            const isExpanded = protocoloExpandidoId === protocolo.id || protocoloExpandidoId === '__all__';
 
             return (
               <Card
