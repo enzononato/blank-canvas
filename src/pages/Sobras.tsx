@@ -410,6 +410,18 @@ export default function Sobras() {
                             Tratar
                           </Button>
                         )}
+                        {isErroCarregamento(sobra.causa) && sobra.status !== 'encerrado' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs border-purple-500 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-500/10"
+                            disabled={updatingStatus === sobra.id}
+                            onClick={() => handleDevolverEstoque(sobra)}
+                          >
+                            <Warehouse className="w-3.5 h-3.5 mr-1" />
+                            Estoque
+                          </Button>
+                        )}
                         {(sobra.status === 'aberto' || sobra.status === 'em_andamento') && (
                           <Button
                             size="sm"
