@@ -524,7 +524,7 @@ export default function Sobras() {
       )}
 
       {/* Modal de detalhes */}
-      <Dialog open={!!detalheSobra} onOpenChange={(open) => !open && setDetalheSobra(null)}>
+      <Dialog open={!!detalheSobra} onOpenChange={(open) => { if (!open) { setDetalheSobra(null); setComentario(''); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
