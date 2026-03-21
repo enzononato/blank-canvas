@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,8 +15,11 @@ import { PdvAutocomplete } from '@/components/PdvAutocomplete';
 import { toast } from '@/hooks/use-toast';
 import { Motorista } from '@/types';
 import { cn } from '@/lib/utils';
-import { Loader2, CheckCircle, MapPin, FileText, Tag, AlertTriangle } from 'lucide-react';
+import { Loader2, CheckCircle, MapPin, FileText, Tag, AlertTriangle, Camera, X, ImageIcon } from 'lucide-react';
 import { format } from 'date-fns';
+import { compressImage } from '@/utils/imageCompression';
+import { uploadFotoParaStorage } from '@/utils/uploadFotoStorage';
+import CameraCapture from '@/components/CameraCapture';
 
 interface PosRotaProps {
   motorista: Motorista;
@@ -39,11 +42,16 @@ export function PosRota({ motorista }: PosRotaProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [enviado, setEnviado] = useState(false);
   const [numeroProtocolo, setNumeroProtocolo] = useState('');
+  
+  // Fotos
+  const [fotos, setFotos] = useState<string[]>([]);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
 
   const precisaPdv = tipo === 'erro_entrega' || tipo === 'avaria' || tipo === 'inversao';
   const precisaNF = tipo === 'avaria' || tipo === 'inversao';
 
-  const canSubmit = mapa.trim() && tipo && (!precisaPdv || (codigoPdv.trim() && pdvSelecionado));
+  const canSubmit = mapa.trim() && tipo && (!precisaPdv || (codigoPdv.trim() && pdvSelecionado)) && fotos.length > 0;
 
   const handlePdvChange = (value: string, pdv?: { codigo: string }) => {
     setCodigoPdv(value);
@@ -52,7 +60,6 @@ export function PosRota({ motorista }: PosRotaProps) {
 
   const handleTipoChange = (value: string) => {
     setTipo(value);
-    // Reset conditional fields
     if (value !== 'erro_entrega' && value !== 'avaria' && value !== 'inversao') {
       setCodigoPdv('');
       setPdvSelecionado(false);
@@ -60,6 +67,24 @@ export function PosRota({ motorista }: PosRotaProps) {
     if (value !== 'avaria' && value !== 'inversao') {
       setNotaFiscal('');
     }
+  };
+
+  const handleCameraCapture = useCallback(async (imageDataUrl: string) => {
+    setIsCompressing(true);
+    try {
+      const compressed = await compressImage(imageDataUrl);
+      setFotos(prev => [...prev, compressed]);
+      toast({ title: 'Foto capturada', description: `Foto ${fotos.length + 1} salva.` });
+    } catch (err) {
+      console.error('Erro ao comprimir:', err);
+      setFotos(prev => [...prev, imageDataUrl]);
+    } finally {
+      setIsCompressing(false);
+    }
+  }, [fotos.length]);
+
+  const removeFoto = (index: number) => {
+    setFotos(prev => prev.filter((_, i) => i !== index));
   };
 
   const resetForm = () => {
@@ -71,6 +96,7 @@ export function PosRota({ motorista }: PosRotaProps) {
     setObservacao('');
     setEnviado(false);
     setNumeroProtocolo('');
+    setFotos([]);
   };
 
   const handleSubmit = async () => {
@@ -82,6 +108,13 @@ export function PosRota({ motorista }: PosRotaProps) {
       const agora = new Date();
       const numero = `POSROTA-${format(agora, 'yyyyMMddHHmmss')}${Math.floor(Math.random() * 100).toString().padStart(2, '0')}`;
       const tipoLabel = TIPOS_POS_ROTA.find(t => t.value === tipo)?.label || tipo;
+
+      // Upload das fotos
+      const fotosUrls: string[] = [];
+      for (let i = 0; i < fotos.length; i++) {
+        const url = await uploadFotoParaStorage(fotos[i], numero, `sobra_${i + 1}`);
+        if (url) fotosUrls.push(url);
+      }
 
       const { error } = await supabase.from('protocolos').insert({
         numero,
@@ -100,6 +133,7 @@ export function PosRota({ motorista }: PosRotaProps) {
         motorista_email: motorista.email || null,
         motorista_unidade: motorista.unidade,
         observacao_geral: observacao.trim() || null,
+        fotos_protocolo: { fotosSobra: fotosUrls },
         observacoes_log: JSON.stringify([{
           id: crypto.randomUUID(),
           usuarioNome: motorista.nome,
@@ -107,7 +141,7 @@ export function PosRota({ motorista }: PosRotaProps) {
           data: format(agora, 'dd/MM/yyyy'),
           hora: format(agora, 'HH:mm'),
           acao: 'Registrou pós-rota',
-          texto: `Sobra em rota - ${tipoLabel}${precisaPdv ? ` | PDV: ${codigoPdv.trim()}` : ''}${notaFiscal.trim() ? ` | NF: ${notaFiscal.trim()}` : ''}`
+          texto: `Sobra em rota - ${tipoLabel}${precisaPdv ? ` | PDV: ${codigoPdv.trim()}` : ''}${notaFiscal.trim() ? ` | NF: ${notaFiscal.trim()}` : ''} | ${fotosUrls.length} foto(s)`
         }]),
       });
 
@@ -124,6 +158,7 @@ export function PosRota({ motorista }: PosRotaProps) {
           mapa: mapa.trim(),
           codigo_pdv: precisaPdv ? codigoPdv.trim() : null,
           nota_fiscal: notaFiscal.trim() || null,
+          fotos_count: fotosUrls.length,
         },
         usuario_nome: motorista.nome,
         usuario_role: 'motorista',
@@ -135,7 +170,7 @@ export function PosRota({ motorista }: PosRotaProps) {
 
       toast({
         title: 'Pós-Rota registrado!',
-        description: `Registro ${numero} criado com sucesso.`,
+        description: `Registro ${numero} criado com ${fotosUrls.length} foto(s).`,
       });
 
       // Notificar controle por e-mail (fire-and-forget)
@@ -153,6 +188,7 @@ export function PosRota({ motorista }: PosRotaProps) {
             codigo_pdv: precisaPdv ? codigoPdv.trim() : undefined,
             nota_fiscal: notaFiscal.trim() || undefined,
             observacao: observacao.trim() || undefined,
+            fotos_count: fotosUrls.length,
             data: format(agora, 'dd/MM/yyyy'),
             hora: format(agora, 'HH:mm'),
           }),
@@ -193,135 +229,207 @@ export function PosRota({ motorista }: PosRotaProps) {
   }
 
   return (
-    <div className="pb-6 space-y-4">
-      {/* Mapa */}
-      <div className="bg-card rounded-xl shadow-sm border border-border/50">
-        <div className="px-4 py-3 border-b border-border/50">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-primary" />
-            Dados da Rota
-          </h3>
-        </div>
-        <div className="p-4 space-y-4">
-          <div className="space-y-1.5">
-            <Label className="text-sm font-medium">Mapa *</Label>
-            <Input
-              placeholder="Número do mapa"
-              value={mapa}
-              onChange={(e) => setMapa(e.target.value)}
-              className="h-12 text-base"
-            />
-          </div>
+    <>
+      <CameraCapture
+        isOpen={cameraOpen}
+        onClose={() => setCameraOpen(false)}
+        onCapture={handleCameraCapture}
+        title="Foto da Sobra"
+      />
 
-          <div className="space-y-1.5">
-            <Label className="text-sm font-medium">Nota Fiscal</Label>
-            <Input
-              placeholder="Número da nota fiscal (opcional)"
-              value={notaFiscal}
-              onChange={(e) => setNotaFiscal(e.target.value)}
-              className="h-12 text-base"
-            />
+      <div className="pb-6 space-y-4">
+        {/* Mapa */}
+        <div className="bg-card rounded-xl shadow-sm border border-border/50">
+          <div className="px-4 py-3 border-b border-border/50">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-primary" />
+              Dados da Rota
+            </h3>
           </div>
-        </div>
-      </div>
-
-      {/* Tipo e Causa */}
-      <div className="bg-card rounded-xl shadow-sm border border-border/50">
-        <div className="px-4 py-3 border-b border-border/50">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Tag className="w-4 h-4 text-primary" />
-            Tipo e Causa — Sobra em Rota
-          </h3>
-        </div>
-        <div className="p-4 space-y-4">
-          <div className="space-y-1.5">
-            <Label className="text-sm font-medium">Tipo *</Label>
-            <Select value={tipo} onValueChange={handleTipoChange}>
-              <SelectTrigger className="h-12 text-base truncate text-left gap-2">
-                <SelectValue placeholder="Selecione o tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                {TIPOS_POS_ROTA.map((t) => (
-                  <SelectItem key={t.value} value={t.value} className="text-sm">
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* PDV condicional */}
-          {precisaPdv && (
+          <div className="p-4 space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Código do PDV *</Label>
-              <PdvAutocomplete
-                value={codigoPdv}
-                onChange={handlePdvChange}
-                unidade={motorista.unidade}
-                placeholder="Buscar PDV..."
+              <Label className="text-sm font-medium">Mapa *</Label>
+              <Input
+                placeholder="Número do mapa"
+                value={mapa}
+                onChange={(e) => setMapa(e.target.value)}
                 className="h-12 text-base"
               />
-              {codigoPdv && !pdvSelecionado && (
-                <p className="text-[11px] text-amber-600 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" />
-                  Selecione um PDV da lista
-                </p>
-              )}
             </div>
-          )}
 
-          {/* NF condicional para avaria e inversão */}
-          {precisaNF && (
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium">Nota Fiscal do PDV</Label>
+              <Label className="text-sm font-medium">Nota Fiscal</Label>
               <Input
-                placeholder="NF relacionada ao PDV"
+                placeholder="Número da nota fiscal (opcional)"
                 value={notaFiscal}
                 onChange={(e) => setNotaFiscal(e.target.value)}
                 className="h-12 text-base"
               />
             </div>
+          </div>
+        </div>
+
+        {/* Tipo e Causa */}
+        <div className="bg-card rounded-xl shadow-sm border border-border/50">
+          <div className="px-4 py-3 border-b border-border/50">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <Tag className="w-4 h-4 text-primary" />
+              Tipo e Causa — Sobra em Rota
+            </h3>
+          </div>
+          <div className="p-4 space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Tipo *</Label>
+              <Select value={tipo} onValueChange={handleTipoChange}>
+                <SelectTrigger className="h-12 text-base truncate text-left gap-2">
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIPOS_POS_ROTA.map((t) => (
+                    <SelectItem key={t.value} value={t.value} className="text-sm">
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* PDV condicional */}
+            {precisaPdv && (
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Código do PDV *</Label>
+                <PdvAutocomplete
+                  value={codigoPdv}
+                  onChange={handlePdvChange}
+                  unidade={motorista.unidade}
+                  placeholder="Buscar PDV..."
+                  className="h-12 text-base"
+                />
+                {codigoPdv && !pdvSelecionado && (
+                  <p className="text-[11px] text-amber-600 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" />
+                    Selecione um PDV da lista
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* NF condicional para avaria e inversão */}
+            {precisaNF && (
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Nota Fiscal do PDV</Label>
+                <Input
+                  placeholder="NF relacionada ao PDV"
+                  value={notaFiscal}
+                  onChange={(e) => setNotaFiscal(e.target.value)}
+                  className="h-12 text-base"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Fotos das sobras */}
+        <div className="bg-card rounded-xl shadow-sm border border-border/50">
+          <div className="px-4 py-3 border-b border-border/50">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-primary" />
+              Fotos das Sobras *
+            </h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Tire pelo menos 1 foto. Pode adicionar várias.
+            </p>
+          </div>
+          <div className="p-4 space-y-3">
+            {/* Grid de fotos */}
+            {fotos.length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                {fotos.map((foto, index) => (
+                  <div key={index} className="relative aspect-square rounded-lg overflow-hidden border-2 border-border group">
+                    <img src={foto} alt={`Sobra ${index + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeFoto(index)}
+                      className="absolute top-1 right-1 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center shadow-md opacity-90 hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] text-center py-0.5">
+                      Foto {index + 1}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Botão de adicionar foto */}
+            <button
+              type="button"
+              onClick={() => setCameraOpen(true)}
+              disabled={isCompressing}
+              className={cn(
+                "w-full border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 transition-colors",
+                "border-primary/40 bg-primary/5 hover:bg-primary/10 active:bg-primary/15",
+                "disabled:opacity-50",
+                fotos.length === 0 ? "py-10" : "py-5"
+              )}
+            >
+              <div className={cn(
+                "rounded-full flex items-center justify-center bg-primary/10",
+                fotos.length === 0 ? "w-14 h-14" : "w-10 h-10"
+              )}>
+                <Camera className={cn("text-primary", fotos.length === 0 ? "w-7 h-7" : "w-5 h-5")} />
+              </div>
+              <span className="text-sm font-medium text-primary">
+                {isCompressing ? 'Processando...' : fotos.length === 0 ? 'Tirar Foto da Sobra' : 'Adicionar Mais Fotos'}
+              </span>
+              {fotos.length > 0 && (
+                <span className="text-[11px] text-muted-foreground">
+                  {fotos.length} foto{fotos.length !== 1 ? 's' : ''} adicionada{fotos.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Observação */}
+        <div className="bg-card rounded-xl shadow-sm border border-border/50">
+          <div className="px-4 py-3 border-b border-border/50">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <FileText className="w-4 h-4 text-primary" />
+              Observação
+            </h3>
+          </div>
+          <div className="p-4">
+            <Textarea
+              placeholder="Informações adicionais sobre a sobra em rota..."
+              value={observacao}
+              onChange={(e) => setObservacao(e.target.value)}
+              rows={3}
+              className="text-sm resize-none"
+            />
+          </div>
+        </div>
+
+        {/* Botão enviar */}
+        <Button
+          onClick={handleSubmit}
+          disabled={!canSubmit || isSubmitting}
+          className="w-full h-12 text-sm font-semibold rounded-xl"
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Enviando {fotos.length} foto{fotos.length !== 1 ? 's' : ''}...
+            </>
+          ) : (
+            <>
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Registrar Pós-Rota
+            </>
           )}
-        </div>
+        </Button>
       </div>
-
-      {/* Observação */}
-      <div className="bg-card rounded-xl shadow-sm border border-border/50">
-        <div className="px-4 py-3 border-b border-border/50">
-          <h3 className="text-sm font-semibold flex items-center gap-2">
-            <FileText className="w-4 h-4 text-primary" />
-            Observação
-          </h3>
-        </div>
-        <div className="p-4">
-          <Textarea
-            placeholder="Informações adicionais sobre a sobra em rota..."
-            value={observacao}
-            onChange={(e) => setObservacao(e.target.value)}
-            rows={3}
-            className="text-sm resize-none"
-          />
-        </div>
-      </div>
-
-      {/* Botão enviar */}
-      <Button
-        onClick={handleSubmit}
-        disabled={!canSubmit || isSubmitting}
-        className="w-full h-12 text-sm font-semibold rounded-xl"
-      >
-        {isSubmitting ? (
-          <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Registrando...
-          </>
-        ) : (
-          <>
-            <CheckCircle className="w-4 h-4 mr-2" />
-            Registrar Pós-Rota
-          </>
-        )}
-      </Button>
-    </div>
+    </>
   );
 }
