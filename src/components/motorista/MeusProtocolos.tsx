@@ -798,6 +798,49 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
 
       {renderContent()}
 
+      {/* Paginação para encerrados */}
+      {filtroStatus === 'encerrados' && protocolos.length > ITENS_POR_PAGINA && (() => {
+        const totalPaginas = Math.ceil(protocolos.length / ITENS_POR_PAGINA);
+        return (
+          <div className="flex items-center justify-between pt-2">
+            <p className="text-xs text-muted-foreground">
+              {(paginaEncerrados - 1) * ITENS_POR_PAGINA + 1}-{Math.min(paginaEncerrados * ITENS_POR_PAGINA, protocolos.length)} de {protocolos.length}
+            </p>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                disabled={paginaEncerrados === 1}
+                onClick={() => setPaginaEncerrados(p => p - 1)}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              {Array.from({ length: totalPaginas }, (_, i) => i + 1).map(pg => (
+                <Button
+                  key={pg}
+                  variant={paginaEncerrados === pg ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-8 w-8 p-0 text-xs"
+                  onClick={() => setPaginaEncerrados(pg)}
+                >
+                  {pg}
+                </Button>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                disabled={paginaEncerrados === totalPaginas}
+                onClick={() => setPaginaEncerrados(p => p + 1)}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Modal de Busca por PDV */}
       <BuscarProtocoloPdv
         isOpen={showBuscaPdv}
