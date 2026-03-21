@@ -239,38 +239,78 @@ export default function Dashboard() {
     { name: 'Encerrados', value: stats.encerrados },
   ], [stats]);
 
-  // Dados do gráfico de barras (últimos 5 dias)
+  // Dados do gráfico de barras (dinâmico por período)
   const barData = useMemo(() => {
     const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     const today = new Date();
     const result = [];
-    
-    for (let i = 4; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      const dayName = days[date.getDay()];
-      const dateStr = format(date, 'dd/MM/yyyy');
-      
-      // Abertos: protocolos cuja data (dd/MM/yyyy) é desse dia
-      const abertosNoDia = protocolosFiltrados.filter(p => p.data === dateStr).length;
-      
-      // Encerrados: protocolos encerrados nesse dia (pela data do log)
-      const encerradosNoDia = protocolosFiltrados.filter(p => {
-        if (p.status !== 'encerrado') return false;
-        const logEnc = (p.observacoesLog as ObservacaoLog[] | undefined)?.find(l => l.acao?.startsWith('Encerrou o protocolo'));
-        const dataEnc = logEnc?.data || null;
-        return dataEnc === dateStr;
-      }).length;
-      
-      result.push({
-        name: dayName,
-        abertos: abertosNoDia,
-        encerrados: encerradosNoDia,
-      });
+
+    if (chartPeriodo === 'dia') {
+      // Últimas 24h em blocos de 4h
+      for (let i = 5; i >= 0; i--) {
+        const hourStart = new Date(today);
+        hourStart.setHours(today.getHours() - i * 4, 0, 0, 0);
+        const hourEnd = new Date(hourStart);
+        hourEnd.setHours(hourStart.getHours() + 4);
+        const label = `${format(hourStart, 'HH')}h`;
+        const dateStr = format(today, 'dd/MM/yyyy');
+        
+        const abertos = protocolosFiltrados.filter(p => {
+          if (p.data !== dateStr) return false;
+          try {
+            const [h] = p.hora.split(':').map(Number);
+            return h >= hourStart.getHours() && h < hourEnd.getHours();
+          } catch { return false; }
+        }).length;
+
+        result.push({ name: label, abertos, encerrados: 0 });
+      }
+    } else if (chartPeriodo === 'semana') {
+      for (let i = 6; i >= 0; i--) {
+        const date = subDays(today, i);
+        const dayName = days[date.getDay()];
+        const dateStr = format(date, 'dd/MM/yyyy');
+        
+        const abertosNoDia = protocolosFiltrados.filter(p => p.data === dateStr).length;
+        const encerradosNoDia = protocolosFiltrados.filter(p => {
+          if (p.status !== 'encerrado') return false;
+          const logEnc = (p.observacoesLog as ObservacaoLog[] | undefined)?.find(l => l.acao?.startsWith('Encerrou o protocolo'));
+          return logEnc?.data === dateStr;
+        }).length;
+        
+        result.push({ name: `${dayName} ${format(date, 'dd')}`, abertos: abertosNoDia, encerrados: encerradosNoDia });
+      }
+    } else {
+      // Últimas 4 semanas
+      for (let i = 3; i >= 0; i--) {
+        const weekEnd = subDays(today, i * 7);
+        const weekStart = subDays(weekEnd, 6);
+        const label = `${format(weekStart, 'dd/MM')} - ${format(weekEnd, 'dd/MM')}`;
+        
+        const abertos = protocolosFiltrados.filter(p => {
+          try {
+            const d = parse(p.data, 'dd/MM/yyyy', new Date());
+            return d >= startOfDay(weekStart) && d <= endOfDay(weekEnd);
+          } catch { return false; }
+        }).length;
+        
+        const encerrados = protocolosFiltrados.filter(p => {
+          if (p.status !== 'encerrado') return false;
+          const logEnc = (p.observacoesLog as ObservacaoLog[] | undefined)?.find(l => l.acao?.startsWith('Encerrou o protocolo'));
+          if (!logEnc?.data) return false;
+          try {
+            const d = parse(logEnc.data, 'dd/MM/yyyy', new Date());
+            return d >= startOfDay(weekStart) && d <= endOfDay(weekEnd);
+          } catch { return false; }
+        }).length;
+        
+        result.push({ name: label, abertos, encerrados });
+      }
     }
     
     return result;
-  }, [protocolosFiltrados]);
+  }, [protocolosFiltrados, chartPeriodo]);
 
   // Protocolos recentes
   const recentProtocolos = useMemo(() => 
