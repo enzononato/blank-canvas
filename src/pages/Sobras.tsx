@@ -637,6 +637,30 @@ export default function Sobras() {
                 </div>
               )}
 
+              {/* Adicionar comentário */}
+              <div className="border-t pt-3">
+                <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  Adicionar Comentário
+                </p>
+                <div className="flex gap-2">
+                  <Textarea
+                    value={comentario}
+                    onChange={(e) => setComentario(e.target.value)}
+                    placeholder="Escreva um comentário sobre esta sobra..."
+                    className="min-h-[60px] text-sm resize-none flex-1"
+                  />
+                  <Button
+                    size="icon"
+                    className="h-[60px] w-10 shrink-0"
+                    disabled={!comentario.trim() || enviandoComentario}
+                    onClick={handleAdicionarComentario}
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
               {/* Ações */}
               {detalheSobra.status !== 'encerrado' && (
                 <div className="flex flex-col gap-2 pt-2 border-t">
