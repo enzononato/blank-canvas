@@ -119,6 +119,8 @@ export default function Sobras() {
   const [contadores, setContadores] = useState({ pendente: 0, tratamento: 0, resolvido: 0 });
   const [detalheSobra, setDetalheSobra] = useState<SobraProtocolo | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const [comentario, setComentario] = useState('');
+  const [enviandoComentario, setEnviandoComentario] = useState(false);
 
   const fetchContadores = useCallback(async () => {
     const [pRes, tRes, rRes] = await Promise.all([
