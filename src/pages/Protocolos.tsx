@@ -98,10 +98,9 @@ export default function Protocolos() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [periodoFilter, setPeriodoFilter] = useState<string>(() => initialPeriodoParam || 'todos');
-  const [unidadeFilter, setUnidadeFilter] = useState<string>(() => {
-    if (!initialUnidadeParam) return 'todas';
-    const unidade = initialUnidadeParam.split(',').map(u => u.trim())[0];
-    return unidade || 'todas';
+  const [unidadesFiltro, setUnidadesFiltro] = useState<string[]>(() => {
+    if (!initialUnidadeParam) return [];
+    return initialUnidadeParam.split(',').map(u => u.trim()).filter(Boolean);
   });
 
   // Pagination states
