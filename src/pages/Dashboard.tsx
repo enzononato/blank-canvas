@@ -974,6 +974,7 @@ export default function Dashboard() {
               <tr className="table-header">
                 <th className="text-left p-2 text-[10px] rounded-tl-lg">Protocolo</th>
                 <th className="text-left p-2 text-[10px]">Motorista</th>
+                <th className="text-left p-2 text-[10px]">Unidade</th>
                 <th className="text-left p-2 text-[10px]">Data</th>
                 <th className="text-left p-2 text-[10px]">Status</th>
                 <th className="text-right p-2 text-[10px] rounded-tr-lg">Ações</th>
@@ -1007,6 +1008,9 @@ export default function Dashboard() {
                         </div>
                         <span className="font-medium text-[11px]">{protocolo.motorista.nome}</span>
                       </div>
+                    </td>
+                    <td className="p-2">
+                      <span className="text-[11px] font-medium text-muted-foreground">{protocolo.unidadeNome || '—'}</span>
                     </td>
                     <td className="p-2 text-muted-foreground text-[11px]">{protocolo.data}</td>
                     <td className="p-2">
