@@ -339,14 +339,14 @@ export default function Motoristas() {
   const unidadesAtivas = new Set(motoristas.map(m => m.unidade)).size;
 
   return (
-    <div className="space-y-4 animate-fade-in">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="font-heading text-2xl font-bold text-foreground flex items-center gap-2">
-            <Truck className="text-primary" size={24} />
+          <h1 className="font-heading text-3xl font-bold text-foreground flex items-center gap-3">
+            <Truck className="text-primary" size={32} />
             Motoristas
           </h1>
-          <p className="text-muted-foreground mt-0.5 text-sm">Gerencie os motoristas cadastrados</p>
+          <p className="text-muted-foreground mt-1">Gerencie motoristas, ajudantes e suas unidades de operação</p>
         </div>
         
         <div className="flex gap-2">
