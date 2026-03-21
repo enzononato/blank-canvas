@@ -117,7 +117,7 @@ export default function MotoristaLogin() {
       </div>
 
       {/* Card de login */}
-      <div className="flex-1 px-5 pb-4 max-w-md mx-auto w-full flex flex-col justify-center -mt-2">
+      <div className="flex-1 px-5 pb-4 max-w-md mx-auto w-full flex flex-col justify-center -mt-4">
         <div className="bg-card rounded-2xl shadow-xl border border-border/40 p-5">
           <p className="text-sm text-muted-foreground text-center mb-5">
             Faça login para registrar protocolos e acompanhar suas entregas
