@@ -1496,8 +1496,8 @@ export default function MotoristaPortal() {
                       )}
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="emailContato" className="text-sm font-medium">
-                        E-mail <span className="text-muted-foreground font-normal">(opcional)</span>
+                      <Label htmlFor="emailContato" className="text-sm font-medium uppercase">
+                        E-MAIL <span className="text-muted-foreground font-normal normal-case">(opcional)</span>
                       </Label>
                       <Input
                         id="emailContato"
