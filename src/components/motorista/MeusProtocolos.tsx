@@ -441,7 +441,7 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
     return listaExibida.map((protocolo) => {
       const isExpanded = expandedId === protocolo.id;
       const produtos = Array.isArray(protocolo.produtos) ? protocolo.produtos as Produto[] : null;
-      const historicoFiltrado = getHistoricoMotorista(protocolo.observacoes_log as ObservacaoLog[], protocolo.status);
+      const historicoFiltrado = getHistoricoMotorista(protocolo.observacoes_log, protocolo.status);
 
       return (
         <Card 
