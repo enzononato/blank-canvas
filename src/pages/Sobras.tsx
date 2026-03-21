@@ -211,8 +211,7 @@ export default function Sobras() {
 
   return (
     <div className="space-y-6">
-      <ContentHeader />
-      <div className="-mt-4">
+      <div>
         <h1 className="text-2xl font-bold">Sobras em Rota</h1>
         <p className="text-sm text-muted-foreground">Gerencie os registros de pós-rota dos motoristas</p>
       </div>
