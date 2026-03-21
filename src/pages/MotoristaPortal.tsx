@@ -1091,7 +1091,7 @@ export default function MotoristaPortal() {
           </TabsList>
 
           {/* Tab: Novo Protocolo */}
-          <TabsContent value="novo" className="mt-4 pb-24 space-y-4" data-tour="motorista-form">
+          <TabsContent value="novo" className="mt-4 pb-4 space-y-4" data-tour="motorista-form">
             {/* Seção: Dados Gerais */}
             <div className="bg-card rounded-xl shadow-sm border border-border/50">
               <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-3 border-b border-border/30">
