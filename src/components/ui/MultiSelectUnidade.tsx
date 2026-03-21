@@ -24,16 +24,12 @@ export function MultiSelectUnidade({
 }: MultiSelectUnidadeProps) {
   const [open, setOpen] = useState(false);
 
-  const allSelected = selected.length === 0 || selected.length === unidades.length;
+  const noneSelected = selected.length === 0;
+  const allSelected = selected.length === unidades.length;
 
   const handleToggleAll = () => {
-    if (allSelected) {
-      // Se todas estão selecionadas, não faz nada (ou limpa)
-      // Vazio = todas, então se clicar em "Todas" quando já está tudo, mantém
-      onChange([]);
-    } else {
-      onChange([]);
-    }
+    // Sempre limpa → volta para "Todas"
+    onChange([]);
   };
 
   const handleToggle = (nome: string) => {
@@ -42,12 +38,7 @@ export function MultiSelectUnidade({
       onChange(newSelected);
     } else {
       const newSelected = [...selected, nome];
-      // Se selecionou todas, volta para array vazio (= todas)
-      if (newSelected.length === unidades.length) {
-        onChange([]);
-      } else {
-        onChange(newSelected);
-      }
+      onChange(newSelected);
     }
   };
 
