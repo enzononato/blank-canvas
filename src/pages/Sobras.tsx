@@ -327,6 +327,17 @@ export default function Sobras() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={filtroUnidade} onValueChange={(v) => { setFiltroUnidade(v); setCurrentPage(1); }}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder="Unidade" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todas">Todas as Unidades</SelectItem>
+            {unidades.map(u => (
+              <SelectItem key={u.id} value={u.nome}>{u.nome}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button variant="outline" size="icon" onClick={() => { fetchSobras(); fetchContadores(); }}>
           <RefreshCw className="w-4 h-4" />
         </Button>
