@@ -405,7 +405,12 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
       );
     }
 
-    return protocolos.map((protocolo) => {
+    // Aplicar paginação para encerrados
+    const listaExibida = filtroStatus === 'encerrados' 
+      ? protocolos.slice((paginaEncerrados - 1) * ITENS_POR_PAGINA, paginaEncerrados * ITENS_POR_PAGINA)
+      : protocolos;
+
+    return listaExibida.map((protocolo) => {
       const isExpanded = expandedId === protocolo.id;
       const produtos = Array.isArray(protocolo.produtos) ? protocolo.produtos as Produto[] : null;
       const historicoFiltrado = getHistoricoMotorista(protocolo.observacoes_log as ObservacaoLog[], protocolo.status);
