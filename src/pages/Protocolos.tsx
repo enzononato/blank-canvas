@@ -481,11 +481,11 @@ export default function Protocolos() {
     setValidadoFilter('todos');
     setTipoFilter('todos');
     if (isAdmin) {
-      setUnidadeFilter('todas');
+      setUnidadesFiltro([]);
     }
   };
 
-  const hasActiveFilters = activeTab === 'todos' || dataInicialFilter || dataFinalFilter || lancadoFilter !== 'todos' || validadoFilter !== 'todos' || tipoFilter !== 'todos' || unidadeFilter !== 'todas';
+  const hasActiveFilters = activeTab === 'todos' || dataInicialFilter || dataFinalFilter || lancadoFilter !== 'todos' || validadoFilter !== 'todos' || tipoFilter !== 'todos' || unidadesFiltro.length > 0;
 
   return (
     <div className="space-y-4">
