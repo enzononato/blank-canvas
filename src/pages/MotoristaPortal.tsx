@@ -1118,7 +1118,7 @@ export default function MotoristaPortal() {
                 <div className="space-y-4">
                   <div className="space-y-1.5" data-tour="campo-mapa">
                     <div className="flex items-center gap-1.5">
-                      <Label htmlFor="mapa" className="text-sm font-medium uppercase">MAPA *</Label>
+                      <Label htmlFor="mapa" className="text-sm font-medium">Mapa *</Label>
                       {touched.mapa && mapa.trim() && <Check size={14} className="text-emerald-500" />}
                     </div>
                     <Input
@@ -1140,7 +1140,7 @@ export default function MotoristaPortal() {
                   </div>
                   <div className="space-y-1.5" data-tour="campo-pdv">
                     <div className="flex items-center gap-1.5">
-                      <Label htmlFor="codigoPdv" className="text-sm font-medium uppercase">CÓDIGO PDV *</Label>
+                      <Label htmlFor="codigoPdv" className="text-sm font-medium">Código PDV *</Label>
                       {touched.codigoPdv && codigoPdv.trim() && <Check size={14} className="text-emerald-500" />}
                     </div>
                     <PdvAutocomplete
@@ -1169,7 +1169,7 @@ export default function MotoristaPortal() {
                   </div>
                   <div className="space-y-1.5" data-tour="campo-nota-fiscal">
                     <div className="flex items-center gap-1.5">
-                      <Label htmlFor="notaFiscal" className="text-sm font-medium uppercase">NOTA FISCAL *</Label>
+                      <Label htmlFor="notaFiscal" className="text-sm font-medium">Nota Fiscal *</Label>
                       {touched.notaFiscal && notaFiscal.trim() && <Check size={14} className="text-emerald-500" />}
                     </div>
                     <Input
@@ -1205,7 +1205,7 @@ export default function MotoristaPortal() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" data-tour="campo-tipo-reposicao">
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-1.5">
-                      <Label className="text-sm font-medium uppercase">TIPO *</Label>
+                      <Label className="text-sm font-medium">Tipo *</Label>
                       {touched.tipoReposicao && tipoReposicao && <Check size={14} className="text-emerald-500" />}
                     </div>
                     <Select 
@@ -1235,7 +1235,7 @@ export default function MotoristaPortal() {
 
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-1.5">
-                      <Label className="text-sm font-medium uppercase">CAUSA *</Label>
+                      <Label className="text-sm font-medium">Causa *</Label>
                       {touched.causa && causa && <Check size={14} className="text-emerald-500" />}
                     </div>
                     <Select 
@@ -1322,7 +1322,7 @@ export default function MotoristaPortal() {
                         </div>
                         <div className="space-y-2">
                           <div className="space-y-1.5">
-                            <Label className="text-xs font-medium text-muted-foreground uppercase">PRODUTO *</Label>
+                            <Label className="text-xs font-medium text-muted-foreground">Produto *</Label>
                             <ProdutoAutocomplete
                               value={produto.produto}
                               onChange={(value, embalagem) => {
@@ -1471,8 +1471,8 @@ export default function MotoristaPortal() {
               </div>
               <div className="p-4 space-y-4">
                     <div className="space-y-1.5" data-tour="campo-whatsapp">
-                      <Label htmlFor="whatsappContato" className="text-sm font-medium uppercase">
-                        WHATSAPP *
+                      <Label htmlFor="whatsappContato" className="text-sm font-medium">
+                        WhatsApp *
                       </Label>
                       <Input
                         id="whatsappContato"
@@ -1496,8 +1496,8 @@ export default function MotoristaPortal() {
                       )}
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="emailContato" className="text-sm font-medium uppercase">
-                        E-MAIL <span className="text-muted-foreground font-normal normal-case">(opcional)</span>
+                      <Label htmlFor="emailContato" className="text-sm font-medium">
+                        E-mail <span className="text-muted-foreground font-normal">(opcional)</span>
                       </Label>
                       <Input
                         id="emailContato"
