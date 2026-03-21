@@ -75,7 +75,7 @@ export function MultiSelectUnidade({
           {/* Selecionar Todas */}
           <label className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted/50 cursor-pointer text-xs font-medium">
             <Checkbox
-              checked={allSelected}
+              checked={noneSelected || allSelected}
               onCheckedChange={handleToggleAll}
             />
             {placeholder}
