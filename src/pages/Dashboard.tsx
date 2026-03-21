@@ -944,11 +944,35 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Bar Chart */}
         <div className="card-stats animate-slide-up" style={{ animationDelay: '950ms' }}>
-          <h3 className="font-heading text-base font-semibold mb-3">Protocolos da Semana</h3>
-          <ResponsiveContainer width="100%" height={220}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-heading text-base font-semibold">
+              Protocolos {chartPeriodo === 'dia' ? 'de Hoje' : chartPeriodo === 'semana' ? 'da Semana' : 'do Mês'}
+            </h3>
+            <div className="flex gap-1 bg-muted/50 rounded-lg p-0.5">
+              {[
+                { value: 'dia' as const, label: 'Dia' },
+                { value: 'semana' as const, label: 'Semana' },
+                { value: 'mes' as const, label: 'Mês' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setChartPeriodo(opt.value)}
+                  className={cn(
+                    "px-3 py-1 rounded-md text-xs font-medium transition-all",
+                    chartPeriodo === opt.value
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={300}>
             <BarChart data={barData}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+              <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={10} />
               <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} domain={[0, 'dataMax']} fontSize={11} />
               <Tooltip 
                 contentStyle={{ 
@@ -976,8 +1000,8 @@ export default function Dashboard() {
 
         {/* Pie Chart */}
         <div className="card-stats animate-slide-up" style={{ animationDelay: '1000ms' }}>
-          <h3 className="font-heading text-base font-semibold mb-3">Status dos Protocolos</h3>
-          <ResponsiveContainer width="100%" height={220}>
+          <h3 className="font-heading text-base font-semibold mb-4">Status dos Protocolos</h3>
+          <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
                 data={pieData}
