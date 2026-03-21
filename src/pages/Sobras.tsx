@@ -38,6 +38,7 @@ import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { ObservacaoLog } from '@/types';
 import { getDirectStorageUrl } from '@/utils/urlHelpers';
+import { Textarea } from '@/components/ui/textarea';
 
 interface SobraProtocolo {
   id: string;
