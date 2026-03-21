@@ -30,11 +30,12 @@ import {
 } from '@/components/ui/dialog';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { TablePagination } from '@/components/ui/TablePagination';
-import { Package, RefreshCw, Clock, CheckCircle, AlertTriangle, MapPin, FileText, Truck, Eye } from 'lucide-react';
+import { Package, RefreshCw, Clock, CheckCircle, AlertTriangle, MapPin, FileText, Truck, Eye, ImageIcon } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { ObservacaoLog } from '@/types';
+import { getDirectStorageUrl } from '@/utils/urlHelpers';
 
 interface SobraProtocolo {
   id: string;
@@ -52,6 +53,7 @@ interface SobraProtocolo {
   observacao_geral: string | null;
   created_at: string | null;
   observacoes_log: unknown;
+  fotos_protocolo: unknown;
 }
 
 const STATUS_OPTIONS = [
@@ -127,7 +129,7 @@ export default function Sobras() {
     try {
       let query = supabase
         .from('protocolos')
-        .select('id, numero, data, hora, status, causa, mapa, nota_fiscal, codigo_pdv, motorista_nome, motorista_unidade, motorista_codigo, observacao_geral, created_at, observacoes_log', { count: 'exact' })
+        .select('id, numero, data, hora, status, causa, mapa, nota_fiscal, codigo_pdv, motorista_nome, motorista_unidade, motorista_codigo, observacao_geral, created_at, observacoes_log, fotos_protocolo', { count: 'exact' })
         .eq('tipo_reposicao', 'pos_rota')
         .order('created_at', { ascending: false });
 
@@ -439,6 +441,38 @@ export default function Sobras() {
                   <p className="text-sm bg-muted/50 rounded-lg p-3">{detalheSobra.observacao_geral}</p>
                 </div>
               )}
+
+              {/* Fotos das sobras */}
+              {(() => {
+                const fotos = detalheSobra.fotos_protocolo as Record<string, unknown> | null;
+                const fotosSobra = fotos?.fotosSobra as string[] | undefined;
+                if (!fotosSobra || fotosSobra.length === 0) return null;
+                return (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                      <ImageIcon className="w-3.5 h-3.5" />
+                      Fotos da Sobra ({fotosSobra.length})
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {fotosSobra.map((url, i) => (
+                        <a
+                          key={i}
+                          href={getDirectStorageUrl(url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block aspect-square rounded-lg overflow-hidden border border-border hover:ring-2 hover:ring-primary transition-all"
+                        >
+                          <img
+                            src={getDirectStorageUrl(url)}
+                            alt={`Foto sobra ${i + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Histórico */}
               {Array.isArray(detalheSobra.observacoes_log) && (detalheSobra.observacoes_log as ObservacaoLog[]).length > 0 && (
