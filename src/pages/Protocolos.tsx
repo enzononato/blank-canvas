@@ -4,6 +4,7 @@ import { Protocolo, ObservacaoLog } from '@/types';
 import { useProtocolos } from '@/contexts/ProtocolosContext';
 import { supabase } from '@/integrations/supabase/client';
 
+import { MultiSelectUnidade } from '@/components/ui/MultiSelectUnidade';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -97,10 +98,9 @@ export default function Protocolos() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [periodoFilter, setPeriodoFilter] = useState<string>(() => initialPeriodoParam || 'todos');
-  const [unidadeFilter, setUnidadeFilter] = useState<string>(() => {
-    if (!initialUnidadeParam) return 'todas';
-    const unidade = initialUnidadeParam.split(',').map(u => u.trim())[0];
-    return unidade || 'todas';
+  const [unidadesFiltro, setUnidadesFiltro] = useState<string[]>(() => {
+    if (!initialUnidadeParam) return [];
+    return initialUnidadeParam.split(',').map(u => u.trim()).filter(Boolean);
   });
 
   // Pagination states
@@ -132,12 +132,12 @@ export default function Protocolos() {
     }
 
     if (unidadeParam && isAdmin) {
-      const primeiraUnidade = unidadeParam.split(',').map(u => u.trim())[0] || 'todas';
-      if (primeiraUnidade !== unidadeFilter) {
-        setUnidadeFilter(primeiraUnidade);
+      const unidadesFromUrl = unidadeParam.split(',').map(u => u.trim()).filter(Boolean);
+      if (JSON.stringify(unidadesFromUrl) !== JSON.stringify(unidadesFiltro)) {
+        setUnidadesFiltro(unidadesFromUrl);
       }
     }
-  }, [searchParams, isAdmin, activeTab, periodoFilter, tipoFilter, unidadeFilter, showFilters]);
+  }, [searchParams, isAdmin, activeTab, periodoFilter, tipoFilter, unidadesFiltro, showFilters]);
 
   // Abrir protocolo por ID quando protocolos estiverem carregados (apenas uma vez)
   useEffect(() => {
@@ -163,17 +163,15 @@ export default function Protocolos() {
       if (p.oculto) return false;
       
       // Filtrar por unidade do motorista
-      // Se o usuário não é admin, filtra pela unidade do usuário
-      // Se é admin e tem filtro selecionado, aplica o filtro
       if (!isAdmin) {
         const userUnidades = (user?.unidade || '').split(',').map(u => u.trim());
-        if (unidadeFilter !== 'todas') {
-          if (unidadeFilter !== p.unidadeNome || !userUnidades.includes(p.unidadeNome)) return false;
+        if (unidadesFiltro.length > 0) {
+          if (!unidadesFiltro.includes(p.unidadeNome || '') || !userUnidades.includes(p.unidadeNome || '')) return false;
         } else {
-          if (!userUnidades.includes(p.unidadeNome)) return false;
+          if (!userUnidades.includes(p.unidadeNome || '')) return false;
         }
-      } else if (unidadeFilter !== 'todas') {
-        if (unidadeFilter !== p.unidadeNome) return false;
+      } else if (unidadesFiltro.length > 0) {
+        if (!unidadesFiltro.includes(p.unidadeNome || '')) return false;
       }
       
       const searchMatch = 
@@ -257,7 +255,7 @@ export default function Protocolos() {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, activeTab, dataInicialFilter, dataFinalFilter, lancadoFilter, validadoFilter, tipoFilter, unidadeFilter, pageSize]);
+  }, [search, activeTab, dataInicialFilter, dataFinalFilter, lancadoFilter, validadoFilter, tipoFilter, unidadesFiltro, pageSize]);
 
   // Envio WhatsApp é feito via webhook n8n
 
@@ -483,11 +481,11 @@ export default function Protocolos() {
     setValidadoFilter('todos');
     setTipoFilter('todos');
     if (isAdmin) {
-      setUnidadeFilter('todas');
+      setUnidadesFiltro([]);
     }
   };
 
-  const hasActiveFilters = activeTab === 'todos' || dataInicialFilter || dataFinalFilter || lancadoFilter !== 'todos' || validadoFilter !== 'todos' || tipoFilter !== 'todos' || unidadeFilter !== 'todas';
+  const hasActiveFilters = activeTab === 'todos' || dataInicialFilter || dataFinalFilter || lancadoFilter !== 'todos' || validadoFilter !== 'todos' || tipoFilter !== 'todos' || unidadesFiltro.length > 0;
 
   return (
     <div className="space-y-4">
@@ -661,19 +659,14 @@ export default function Protocolos() {
                     return userUnidades.includes(u.nome);
                   });
               return unidadesDisponiveis.length > 1 ? (
-                <div className="space-y-1 min-w-[130px]">
+                <div className="space-y-1 min-w-[180px]">
                   <label className="text-xs font-medium text-muted-foreground">Unidade</label>
-                  <Select value={unidadeFilter} onValueChange={setUnidadeFilter}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="Todas" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todas">Todas</SelectItem>
-                      {unidadesDisponiveis.map(u => (
-                        <SelectItem key={u.id} value={u.nome}>{u.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <MultiSelectUnidade
+                    unidades={unidadesDisponiveis}
+                    selected={unidadesFiltro}
+                    onChange={setUnidadesFiltro}
+                    triggerClassName="h-8 text-xs w-full"
+                  />
                 </div>
               ) : null;
             })()}
