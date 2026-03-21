@@ -442,6 +442,38 @@ export default function Sobras() {
                 </div>
               )}
 
+              {/* Fotos das sobras */}
+              {(() => {
+                const fotos = detalheSobra.fotos_protocolo as Record<string, unknown> | null;
+                const fotosSobra = fotos?.fotosSobra as string[] | undefined;
+                if (!fotosSobra || fotosSobra.length === 0) return null;
+                return (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                      <ImageIcon className="w-3.5 h-3.5" />
+                      Fotos da Sobra ({fotosSobra.length})
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {fotosSobra.map((url, i) => (
+                        <a
+                          key={i}
+                          href={getDirectStorageUrl(url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block aspect-square rounded-lg overflow-hidden border border-border hover:ring-2 hover:ring-primary transition-all"
+                        >
+                          <img
+                            src={getDirectStorageUrl(url)}
+                            alt={`Foto sobra ${i + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Histórico */}
               {Array.isArray(detalheSobra.observacoes_log) && (detalheSobra.observacoes_log as ObservacaoLog[]).length > 0 && (
                 <div>
