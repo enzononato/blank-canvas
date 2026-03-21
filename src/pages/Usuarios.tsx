@@ -282,7 +282,7 @@ export default function Usuarios() {
             <Users className="text-primary" size={32} />
             Usuários
           </h1>
-          <p className="text-muted-foreground mt-1">Gerencie os acessos ao sistema</p>
+          <p className="text-muted-foreground mt-1">Gerencie permissões, níveis de acesso e unidades dos usuários do sistema</p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
@@ -519,10 +519,10 @@ export default function Usuarios() {
           value={search}
           onChange={setSearch}
           placeholder="Buscar por nome ou email..."
-          className="max-w-md"
+          className="flex-1"
         />
         <Select value={filterNivel} onValueChange={setFilterNivel}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-52">
             <SelectValue placeholder="Filtrar por nível" />
           </SelectTrigger>
           <SelectContent>
@@ -537,41 +537,55 @@ export default function Usuarios() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-card rounded-lg p-4 border">
-          <p className="text-muted-foreground text-sm">Total</p>
-          <p className="text-2xl font-bold">{usuarios.length}</p>
+        <div className="bg-card rounded-xl p-5 border shadow-sm hover:shadow-md transition-shadow animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-muted">
+              <Users size={20} className="text-foreground" />
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs font-medium">Total</p>
+              <p className="text-2xl font-bold text-foreground">{usuarios.length}</p>
+            </div>
+          </div>
         </div>
-        <div className="bg-card rounded-lg p-4 border">
-          <p className="text-muted-foreground text-sm flex items-center gap-1">
-            <Shield size={14} className="text-primary" /> Admins
-          </p>
-          <p className="text-2xl font-bold text-primary">
-            {usuarios.filter(u => u.nivel === 'admin').length}
-          </p>
+        <div className="bg-card rounded-xl p-5 border shadow-sm hover:shadow-md transition-shadow animate-fade-in" style={{ animationDelay: '50ms' }}>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-primary/10">
+              <Shield size={20} className="text-primary" />
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs font-medium">Admins</p>
+              <p className="text-2xl font-bold text-primary">
+                {usuarios.filter(u => u.nivel === 'admin').length}
+              </p>
+            </div>
+          </div>
         </div>
-        <div className="bg-card rounded-lg p-4 border">
-          <p className="text-muted-foreground text-sm flex items-center gap-1">
-            <Truck size={14} className="text-info" /> Distribuição
-          </p>
-          <p className="text-2xl font-bold text-info">
-            {usuarios.filter(u => u.nivel === 'distribuicao').length}
-          </p>
+        <div className="bg-card rounded-xl p-5 border shadow-sm hover:shadow-md transition-shadow animate-fade-in" style={{ animationDelay: '100ms' }}>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-info/10">
+              <Truck size={20} className="text-info" />
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs font-medium">Operacional</p>
+              <p className="text-2xl font-bold text-info">
+                {usuarios.filter(u => u.nivel === 'distribuicao' || u.nivel === 'controle').length}
+              </p>
+            </div>
+          </div>
         </div>
-        <div className="bg-card rounded-lg p-4 border">
-          <p className="text-muted-foreground text-sm flex items-center gap-1">
-            <UserCircle size={14} /> Conferentes
-          </p>
-          <p className="text-2xl font-bold">
-            {usuarios.filter(u => u.nivel === 'conferente').length}
-          </p>
-        </div>
-        <div className="bg-card rounded-lg p-4 border">
-          <p className="text-muted-foreground text-sm flex items-center gap-1">
-            <ClipboardList size={14} className="text-warning" /> Controle
-          </p>
-          <p className="text-2xl font-bold text-warning">
-            {usuarios.filter(u => u.nivel === 'controle').length}
-          </p>
+        <div className="bg-card rounded-xl p-5 border shadow-sm hover:shadow-md transition-shadow animate-fade-in" style={{ animationDelay: '150ms' }}>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-muted">
+              <UserCircle size={20} className="text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs font-medium">Conferentes</p>
+              <p className="text-2xl font-bold">
+                {usuarios.filter(u => u.nivel === 'conferente').length}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -606,19 +620,30 @@ export default function Usuarios() {
                   </td>
                 </tr>
               ) : (
-                paginatedUsuarios.map((usuario) => (
+                paginatedUsuarios.map((usuario) => {
+                  const initials = usuario.nome
+                    .split(' ')
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map(n => n[0])
+                    .join('')
+                    .toUpperCase();
+                  
+                  return (
                   <tr 
                     key={usuario.id} 
-                    className="border-b border-border hover:bg-muted/30 transition-colors"
+                    className="border-b border-border hover:bg-muted/40 transition-colors"
                   >
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className={cn(
-                          "p-2 rounded-full",
-                          usuario.nivel === 'admin' ? "bg-primary/10" : 
-                          usuario.nivel === 'distribuicao' ? "bg-info/10" : "bg-muted"
+                          "w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
+                          usuario.nivel === 'admin' ? "bg-primary/15 text-primary" : 
+                          usuario.nivel === 'distribuicao' ? "bg-info/15 text-info" : 
+                          usuario.nivel === 'controle' ? "bg-warning/15 text-warning" :
+                          "bg-muted text-muted-foreground"
                         )}>
-                          {getNivelIcon(usuario.nivel)}
+                          {initials}
                         </div>
                         <span className="font-medium">{usuario.nome}</span>
                       </div>
@@ -691,7 +716,8 @@ export default function Usuarios() {
                       </div>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
