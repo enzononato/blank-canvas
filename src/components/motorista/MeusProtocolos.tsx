@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FileText, Clock, CheckCircle, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Package, Plus, XCircle, MessageSquare, MessageCircle, Copy, Check, History } from 'lucide-react';
+import { FileText, Clock, CheckCircle, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Package, Plus, XCircle, MessageSquare, MessageCircle, Copy, Check, History, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Motorista, Produto, ObservacaoLog, FotosProtocolo } from '@/types';
@@ -197,6 +197,10 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
   const [copiadoIdEncerramento, setCopiadoIdEncerramento] = useState<string | null>(null);
   
+  // Paginação para encerrados
+  const [paginaEncerrados, setPaginaEncerrados] = useState(1);
+  const ITENS_POR_PAGINA = 10;
+  
   // Modal states
   const [showBuscaPdv, setShowBuscaPdv] = useState(false);
   const [showEncerrarModal, setShowEncerrarModal] = useState(false);
@@ -297,6 +301,7 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
 
   useEffect(() => {
     fetchProtocolos();
+    setPaginaEncerrados(1);
   }, [motorista.codigo, filtroStatus]);
 
   const getStatusBadge = (status: string) => {
@@ -400,7 +405,12 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
       );
     }
 
-    return protocolos.map((protocolo) => {
+    // Aplicar paginação para encerrados
+    const listaExibida = filtroStatus === 'encerrados' 
+      ? protocolos.slice((paginaEncerrados - 1) * ITENS_POR_PAGINA, paginaEncerrados * ITENS_POR_PAGINA)
+      : protocolos;
+
+    return listaExibida.map((protocolo) => {
       const isExpanded = expandedId === protocolo.id;
       const produtos = Array.isArray(protocolo.produtos) ? protocolo.produtos as Produto[] : null;
       const historicoFiltrado = getHistoricoMotorista(protocolo.observacoes_log as ObservacaoLog[], protocolo.status);
@@ -787,6 +797,49 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
       </div>
 
       {renderContent()}
+
+      {/* Paginação para encerrados */}
+      {filtroStatus === 'encerrados' && protocolos.length > ITENS_POR_PAGINA && (() => {
+        const totalPaginas = Math.ceil(protocolos.length / ITENS_POR_PAGINA);
+        return (
+          <div className="flex items-center justify-between pt-2">
+            <p className="text-xs text-muted-foreground">
+              {(paginaEncerrados - 1) * ITENS_POR_PAGINA + 1}-{Math.min(paginaEncerrados * ITENS_POR_PAGINA, protocolos.length)} de {protocolos.length}
+            </p>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                disabled={paginaEncerrados === 1}
+                onClick={() => setPaginaEncerrados(p => p - 1)}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              {Array.from({ length: totalPaginas }, (_, i) => i + 1).map(pg => (
+                <Button
+                  key={pg}
+                  variant={paginaEncerrados === pg ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-8 w-8 p-0 text-xs"
+                  onClick={() => setPaginaEncerrados(pg)}
+                >
+                  {pg}
+                </Button>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                disabled={paginaEncerrados === totalPaginas}
+                onClick={() => setPaginaEncerrados(p => p + 1)}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Modal de Busca por PDV */}
       <BuscarProtocoloPdv

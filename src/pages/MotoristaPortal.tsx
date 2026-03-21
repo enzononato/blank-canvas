@@ -38,6 +38,7 @@ import { PdvAutocomplete } from '@/components/PdvAutocomplete';
 import { MeusProtocolos } from '@/components/motorista/MeusProtocolos';
 import { PosRota } from '@/components/motorista/PosRota';
 import { MotoristaHeader } from '@/components/motorista/MotoristaHeader';
+import { DailySummary } from '@/components/motorista/DailySummary';
 import CameraCapture from '@/components/CameraCapture';
 
 interface ProdutoForm {
@@ -1063,8 +1064,11 @@ export default function MotoristaPortal() {
         onLogout={handleLogout}
       />
 
+      {/* Resumo do dia */}
+      <DailySummary motorista={motorista} />
+
       {/* Tabs */}
-      <div className="px-4 pt-4 pb-2 max-w-lg mx-auto">
+      <div className="px-4 pt-2 pb-2 max-w-lg mx-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" data-tour="motorista-tabs">
           <TabsList className="grid w-full grid-cols-3 h-12 bg-muted/40 p-1 rounded-xl border border-border/30 gap-1">
             <TabsTrigger 
