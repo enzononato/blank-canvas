@@ -1460,8 +1460,8 @@ export default function MotoristaPortal() {
                 </h3>
               </div>
               <div className="p-4 space-y-4">
-                    <div className="space-y-1" data-tour="campo-whatsapp">
-                      <Label htmlFor="whatsappContato" className="text-[10px] font-medium text-muted-foreground">
+                    <div className="space-y-1.5" data-tour="campo-whatsapp">
+                      <Label htmlFor="whatsappContato" className="text-sm font-medium">
                         WhatsApp *
                       </Label>
                       <Input
@@ -1472,22 +1472,22 @@ export default function MotoristaPortal() {
                         placeholder="(00) 00000-0000"
                         maxLength={16}
                         className={cn(
-                          "h-9 text-sm",
-                          touched.whatsappContato && validateWhatsApp(whatsappContato) && 'border-green-500',
-                          touched.whatsappContato && !validateWhatsApp(whatsappContato) && 'border-red-500'
+                          "h-11 text-sm",
+                          touched.whatsappContato && validateWhatsApp(whatsappContato) && 'border-emerald-500',
+                          touched.whatsappContato && !validateWhatsApp(whatsappContato) && 'border-destructive'
                         )}
                         inputMode="tel"
                       />
                       {touched.whatsappContato && !validateWhatsApp(whatsappContato) && (
-                        <p className="text-[10px] text-red-500 flex items-center gap-0.5">
-                          <AlertCircle size={10} />
+                        <p className="text-[11px] text-destructive flex items-center gap-1">
+                          <AlertCircle size={11} />
                           WhatsApp inválido
                         </p>
                       )}
                     </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="emailContato" className="text-[10px] font-medium text-muted-foreground">
-                        E-mail (opcional)
+                    <div className="space-y-1.5">
+                      <Label htmlFor="emailContato" className="text-sm font-medium">
+                        E-mail <span className="text-muted-foreground font-normal">(opcional)</span>
                       </Label>
                       <Input
                         id="emailContato"
@@ -1496,15 +1496,15 @@ export default function MotoristaPortal() {
                         onChange={(e) => setEmailContato(e.target.value)}
                         placeholder="email@exemplo.com"
                         className={cn(
-                          "h-9 text-sm",
-                          emailContato.trim() && validateEmail(emailContato) && 'border-green-500',
-                          emailContato.trim() && !validateEmail(emailContato) && 'border-red-500'
+                          "h-11 text-sm",
+                          emailContato.trim() && validateEmail(emailContato) && 'border-emerald-500',
+                          emailContato.trim() && !validateEmail(emailContato) && 'border-destructive'
                         )}
                         inputMode="email"
                       />
                       {emailContato.trim() && !validateEmail(emailContato) && (
-                        <p className="text-[10px] text-red-500 flex items-center gap-0.5">
-                          <AlertCircle size={10} />
+                        <p className="text-[11px] text-destructive flex items-center gap-1">
+                          <AlertCircle size={11} />
                           E-mail inválido
                         </p>
                       )}
@@ -1514,14 +1514,14 @@ export default function MotoristaPortal() {
 
             {/* Seção: Observação */}
             <div className="bg-card rounded-xl shadow-sm border border-border/50 overflow-hidden">
-              <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-3 py-2 border-b border-border/30">
-                <h3 className="text-sm font-medium text-foreground flex items-center gap-1.5">
-                  <FileText className="h-3.5 w-3.5 text-primary" />
+              <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-3 border-b border-border/30">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" />
                   Observação
-                  <span className="text-[10px] text-muted-foreground font-normal">(opcional)</span>
+                  <span className="text-[11px] text-muted-foreground font-normal">(opcional)</span>
                 </h3>
               </div>
-              <div className="p-3">
+              <div className="p-4">
                 <Textarea
                   id="observacao"
                   value={observacao}
