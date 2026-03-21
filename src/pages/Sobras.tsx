@@ -129,7 +129,7 @@ export default function Sobras() {
     try {
       let query = supabase
         .from('protocolos')
-        .select('id, numero, data, hora, status, causa, mapa, nota_fiscal, codigo_pdv, motorista_nome, motorista_unidade, motorista_codigo, observacao_geral, created_at, observacoes_log', { count: 'exact' })
+        .select('id, numero, data, hora, status, causa, mapa, nota_fiscal, codigo_pdv, motorista_nome, motorista_unidade, motorista_codigo, observacao_geral, created_at, observacoes_log, fotos_protocolo', { count: 'exact' })
         .eq('tipo_reposicao', 'pos_rota')
         .order('created_at', { ascending: false });
 
