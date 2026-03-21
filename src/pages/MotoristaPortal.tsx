@@ -1169,7 +1169,7 @@ export default function MotoristaPortal() {
                   </div>
                   <div className="space-y-1.5" data-tour="campo-nota-fiscal">
                     <div className="flex items-center gap-1.5">
-                      <Label htmlFor="notaFiscal" className="text-sm font-medium">Nota Fiscal *</Label>
+                      <Label htmlFor="notaFiscal" className="text-sm font-medium uppercase">NOTA FISCAL *</Label>
                       {touched.notaFiscal && notaFiscal.trim() && <Check size={14} className="text-emerald-500" />}
                     </div>
                     <Input
