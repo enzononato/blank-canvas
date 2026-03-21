@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FileText, Clock, CheckCircle, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Package, Plus, XCircle, MessageSquare, MessageCircle, Copy, Check, History, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileText, Clock, CheckCircle, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Package, Plus, XCircle, MessageSquare, MessageCircle, Copy, Check, History, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Motorista, Produto, ObservacaoLog, FotosProtocolo } from '@/types';
@@ -465,6 +465,12 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted-foreground ml-10">
+                    {protocolo.codigo_pdv && (
+                      <span className="flex items-center gap-1 font-semibold text-foreground/80">
+                        <MapPin className="w-3 h-3" />
+                        PDV {protocolo.codigo_pdv}
+                      </span>
+                    )}
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {formatDate(protocolo.data)} às {protocolo.hora}
