@@ -137,6 +137,29 @@ export function PosRota({ motorista }: PosRotaProps) {
         title: 'Pós-Rota registrado!',
         description: `Registro ${numero} criado com sucesso.`,
       });
+
+      // Notificar controle por e-mail (fire-and-forget)
+      try {
+        const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+        fetch(`https://${projectId}.supabase.co/functions/v1/notificar-sobra`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            numero,
+            motorista_nome: motorista.nome,
+            motorista_unidade: motorista.unidade,
+            mapa: mapa.trim(),
+            tipo: tipoLabel,
+            codigo_pdv: precisaPdv ? codigoPdv.trim() : undefined,
+            nota_fiscal: notaFiscal.trim() || undefined,
+            observacao: observacao.trim() || undefined,
+            data: format(agora, 'dd/MM/yyyy'),
+            hora: format(agora, 'HH:mm'),
+          }),
+        }).catch(err => console.error('Erro ao notificar controle:', err));
+      } catch (notifyErr) {
+        console.error('Erro ao disparar notificação:', notifyErr);
+      }
     } catch (err) {
       console.error('Erro ao registrar pós-rota:', err);
       toast({
