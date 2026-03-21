@@ -140,6 +140,10 @@ export default function Sobras() {
         query = query.eq('status', filtroStatus);
       }
 
+      if (filtroUnidade !== 'todas') {
+        query = query.eq('motorista_unidade', filtroUnidade);
+      }
+
       if (busca.trim()) {
         query = query.or(`numero.ilike.%${busca.trim()}%,motorista_nome.ilike.%${busca.trim()}%,mapa.ilike.%${busca.trim()}%,codigo_pdv.ilike.%${busca.trim()}%`);
       }
