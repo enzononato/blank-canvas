@@ -714,19 +714,17 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
   return (
     <div className="space-y-3">
       {/* Filtros de Status com contadores */}
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-3 gap-2">
         <Button
           variant={filtroStatus === 'abertos' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setFiltroStatus('abertos')}
-          className="h-12 text-[13px] font-bold px-1 flex flex-col items-center gap-0.5 leading-none rounded-xl"
+          className="h-11 text-sm font-semibold px-2 flex items-center justify-center gap-1.5 rounded-full"
         >
-          <div className="flex items-center gap-1">
-            <Clock className="w-4 h-4" />
-            <span>Abertos</span>
-          </div>
+          <Clock className="w-4 h-4 shrink-0" />
+          <span>Abertos</span>
           {!loadingContadores && (
-            <span className="text-xs font-extrabold opacity-90">
+            <span className="bg-background/20 text-[11px] font-bold rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
               {contadores.abertos}
             </span>
           )}
@@ -735,14 +733,12 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
           variant={filtroStatus === 'em_andamento' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setFiltroStatus('em_andamento')}
-          className="h-12 text-[13px] font-bold px-1 flex flex-col items-center gap-0.5 leading-none rounded-xl"
+          className="h-11 text-sm font-semibold px-2 flex items-center justify-center gap-1.5 rounded-full"
         >
-          <div className="flex items-center gap-1">
-            <AlertCircle className="w-4 h-4" />
-            <span>Atendimento</span>
-          </div>
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>Atend.</span>
           {!loadingContadores && (
-            <span className="text-xs font-extrabold opacity-90">
+            <span className="bg-background/20 text-[11px] font-bold rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
               {contadores.em_andamento}
             </span>
           )}
@@ -751,14 +747,12 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
           variant={filtroStatus === 'encerrados' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setFiltroStatus('encerrados')}
-          className="h-12 text-[13px] font-bold px-1 flex flex-col items-center gap-0.5 leading-none rounded-xl"
+          className="h-11 text-sm font-semibold px-2 flex items-center justify-center gap-1.5 rounded-full"
         >
-          <div className="flex items-center gap-1">
-            <CheckCircle className="w-4 h-4" />
-            <span>Encerrados</span>
-          </div>
+          <CheckCircle className="w-4 h-4 shrink-0" />
+          <span>Encerr.</span>
           {!loadingContadores && (
-            <span className="text-xs font-extrabold opacity-90">
+            <span className="bg-background/20 text-[11px] font-bold rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
               {contadores.encerrados}
             </span>
           )}
