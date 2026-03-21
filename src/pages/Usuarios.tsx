@@ -282,7 +282,7 @@ export default function Usuarios() {
             <Users className="text-primary" size={32} />
             Usuários
           </h1>
-          <p className="text-muted-foreground mt-1">Gerencie os acessos ao sistema</p>
+          <p className="text-muted-foreground mt-1">Gerencie permissões, níveis de acesso e unidades dos usuários do sistema</p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
