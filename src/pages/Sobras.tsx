@@ -101,12 +101,16 @@ const getTipoBadgeColor = (causa: string | null): string => {
 const ITEMS_PER_PAGE = 20;
 
 export default function Sobras() {
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { registrarLog } = useAuditLog();
   const [sobras, setSobras] = useState<SobraProtocolo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filtroStatus, setFiltroStatus] = useState('todos');
-  const [filtroUnidade, setFiltroUnidade] = useState('todas');
+  const [filtroStatus, setFiltroStatus] = useState(() => searchParams.get('status') || 'todos');
+  const [filtroUnidade, setFiltroUnidade] = useState(() => {
+    const unidadeParam = searchParams.get('unidade');
+    return unidadeParam ? decodeURIComponent(unidadeParam).split(',')[0] : 'todas';
+  });
   const [busca, setBusca] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const { unidades } = useUnidadesDB();
