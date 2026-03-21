@@ -1087,7 +1087,7 @@ export default function MotoristaPortal() {
           </div>
 
           {/* Tabs Protocolos | Pós-Rota */}
-          <TabsList className="grid w-full grid-cols-2 h-14 bg-muted/50 p-1.5 rounded-xl border border-border/40 gap-1.5">
+          <TabsList className="grid w-full grid-cols-2 h-16 bg-muted/50 p-2 rounded-xl border border-border/40 gap-1.5">
             <TabsTrigger 
               value="meus" 
               className="text-[14px] font-semibold gap-1.5 rounded-lg min-w-0 px-2 data-[state=inactive]:bg-background/80 data-[state=inactive]:text-muted-foreground data-[state=inactive]:border data-[state=inactive]:border-border/40 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200"
