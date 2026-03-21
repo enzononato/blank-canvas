@@ -9,7 +9,7 @@ import { MultiSelectUnidade } from '@/components/ui/MultiSelectUnidade';
 import { useProtocolos } from '@/contexts/ProtocolosContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMotoristasDB } from '@/hooks/useMotoristasDB';
-import { FileText, CheckCircle, Clock, Truck, Calendar, Users, Building2, Package, Download, Eye, TrendingUp, MapPin, CalendarRange, X, RefreshCw, Repeat, AlertTriangle, PackageX, Timer } from 'lucide-react';
+import { FileText, CheckCircle, Clock, Truck, Calendar, Users, Building2, Package, Download, Eye, TrendingUp, MapPin, CalendarRange, X, RefreshCw, Repeat, AlertTriangle, PackageX, Timer, Warehouse } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { 
