@@ -519,10 +519,10 @@ export default function Usuarios() {
           value={search}
           onChange={setSearch}
           placeholder="Buscar por nome ou email..."
-          className="max-w-md"
+          className="flex-1"
         />
         <Select value={filterNivel} onValueChange={setFilterNivel}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-52">
             <SelectValue placeholder="Filtrar por nível" />
           </SelectTrigger>
           <SelectContent>
