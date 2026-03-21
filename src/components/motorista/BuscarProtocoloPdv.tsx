@@ -175,7 +175,7 @@ export function BuscarProtocoloPdv({
           {!isSearching && buscaRealizada && resultados.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
               <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Nenhum protocolo em atendimento encontrado</p>
+              <p className="text-sm">Nenhum protocolo {statusFilter === 'aberto' ? 'aberto' : 'em atendimento'} encontrado</p>
               <p className="text-xs mt-1">para o PDV "{codigoPdv}"</p>
             </div>
           )}
