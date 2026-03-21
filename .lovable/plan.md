@@ -1,30 +1,29 @@
 
 
-## Plan: Ação "Enviar para Estoque" em Sobras de Erro de Carregamento
+## Plan: Melhorar Layout da Página de Usuários
 
-### Context
-Quando a causa da sobra é "Erro de Carregamento", significa que o produto foi carregado a mais no caminhão. O perfil Controle precisa registrar o apontamento de que esse produto foi devolvido ao armazém/estoque. Atualmente, o fluxo só tem "Tratar" e "Resolver" — falta uma ação intermediária específica para esse tipo.
+### O que será feito
 
-### What will be built
+Refinamento visual da página de Usuários para um layout mais polido e profissional:
 
-1. **Novo botão "Enviar p/ Estoque"** na tabela e no modal de detalhes da página Sobras, visível apenas quando a causa contém "ERRO DE CARREGAMENTO" e o status não é "encerrado".
+1. **Cards de estatísticas** — Reorganizar para 4 cards na mesma linha (5 cards ficam desalinhados no grid `grid-cols-4`). Adicionar ícones maiores, sombras e hover effects. Mover "Controle" para dentro do grid de 4 colunas agrupando com Conferentes.
 
-2. **Ao clicar**, o sistema:
-   - Altera o status para `encerrado`
-   - Registra no `observacoes_log` uma entrada específica: "Produto devolvido ao estoque"
-   - Registra no `audit_logs` a ação `devolvido_estoque`
-   - Exibe toast de confirmação
+2. **Tabela** — Melhorar espaçamento, avatar com iniciais do usuário em vez de ícone genérico, badges de nível mais destacados, e linhas com melhor contraste no hover.
 
-3. **Badge visual** — Sobras resolvidas com essa ação ganham uma indicação diferenciada no histórico (ex: "Devolvido ao estoque" em vez de genérico "Resolvido").
+3. **Filtros** — Alinhar busca e select de nível com melhor proporção e visual.
 
-### Technical Details
+4. **Header** — Subtítulo mais descritivo, espaçamento refinado.
 
-**File: `src/pages/Sobras.tsx`**
+5. **Cards de estatísticas corrigidos** — O grid atual tem 5 cards em `grid-cols-4`, causando desalinhamento. Reagrupar para 4 cards: Total, Admins, Operacional (Distribuição + Controle), Conferentes.
 
-- Add a new handler `handleDevolverEstoque(sobra)` similar to `handleStatusChange` but with specific log text: "Produto devolvido ao estoque — Erro de carregamento"
-- In the table actions column, add a conditional button with `Warehouse` icon (from lucide) when `causa` includes "ERRO DE CARREGAMENTO" and status is not `encerrado`
-- In the detail modal actions section, add the same button
-- The action sets status to `encerrado` and logs the specific action type
+### Detalhes Técnicos
 
-**No database changes needed** — the existing `observacoes_log` JSONB and `audit_logs` table handle this.
+**Arquivo: `src/pages/Usuarios.tsx`**
+
+- Refatorar grid de stats para 4 cards com ícones dentro de círculos coloridos e animação fade-in
+- Adicionar avatar com iniciais do nome do usuário (2 primeiras letras) na coluna "Usuário" da tabela
+- Melhorar badges de nível com ícone + texto
+- Ajustar proporção dos filtros (`flex-1` para busca, `w-52` para select)
+- Adicionar `shadow-sm hover:shadow-md transition-shadow` nos cards de stats
+- Unidades na tabela com badges mais consistentes usando `Badge` component
 
