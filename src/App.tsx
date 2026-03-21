@@ -26,6 +26,7 @@ import MotoristaLogin from "./pages/MotoristaLogin";
 import MotoristaPortal from "./pages/MotoristaPortal";
 
 import LogsAuditoria from "./pages/LogsAuditoria";
+import Sobras from "./pages/Sobras";
 import NotFound from "./pages/NotFound";
 import PhotoProxyRedirect from "./pages/PhotoProxyRedirect";
 
@@ -53,6 +54,14 @@ const App = () => (
                   <Route element={<MainLayout />}>
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/protocolos" element={<Protocolos />} />
+                    <Route 
+                      path="/sobras" 
+                      element={
+                        <ProtectedRoute allowedRoles={['admin', 'distribuicao', 'controle']}>
+                          <Sobras />
+                        </ProtectedRoute>
+                      } 
+                    />
                     <Route 
                       path="/motoristas" 
                       element={
