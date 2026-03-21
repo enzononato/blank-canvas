@@ -52,20 +52,29 @@ const isObservacaoLog = (value: unknown): value is ObservacaoLog => {
 };
 
 const normalizarObservacoesLog = (observacoesLog?: unknown): ObservacaoLog[] => {
-  if (Array.isArray(observacoesLog)) {
-    return observacoesLog.filter(isObservacaoLog);
-  }
-
-  if (typeof observacoesLog === 'string') {
-    try {
-      const parsed = JSON.parse(observacoesLog);
-      return Array.isArray(parsed) ? parsed.filter(isObservacaoLog) : [];
-    } catch {
-      return [];
+  try {
+    if (!observacoesLog) return [];
+    
+    let data = observacoesLog;
+    
+    // Se for string, tentar parsear
+    if (typeof data === 'string') {
+      try {
+        data = JSON.parse(data);
+      } catch {
+        return [];
+      }
     }
+    
+    // Se for array, filtrar
+    if (Array.isArray(data)) {
+      return data.filter(isObservacaoLog);
+    }
+    
+    return [];
+  } catch {
+    return [];
   }
-
-  return [];
 };
 
 const foiReaberto = (observacoesLog?: unknown): boolean => {
