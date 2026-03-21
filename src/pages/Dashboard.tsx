@@ -61,6 +61,7 @@ export default function Dashboard() {
   const [periodoFiltro, setPeriodoFiltro] = useState<PeriodoFiltro>('todos');
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [chartPeriodo, setChartPeriodo] = useState<'dia' | 'semana' | 'mes'>('semana');
   const [sobrasStats, setSobrasStats] = useState({ total: 0, pendente: 0, tratamento: 0, resolvido: 0, erroCarregamento: 0, erroEntrega: 0 });
 
   // Protocolos filtrados por unidade e período
