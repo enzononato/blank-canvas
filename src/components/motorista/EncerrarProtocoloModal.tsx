@@ -380,12 +380,12 @@ export function EncerrarProtocoloModal({
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
             {/* Resumo do protocolo */}
             <Card className="bg-muted/50 border-border/60">
-              <CardContent className="p-3">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <FileText className="w-4 h-4 text-primary shrink-0" />
-                  <span className="font-mono text-xs font-semibold truncate">{protocolo.numero}</span>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2.5 mb-2">
+                  <FileText className="w-5 h-5 text-primary shrink-0" />
+                  <span className="font-mono text-sm font-bold truncate">{protocolo.numero}</span>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <p>PDV: <span className="font-semibold text-foreground">{protocolo.codigo_pdv || 'N/A'}</span></p>
                   <p className="truncate">Mot: <span className="font-semibold text-foreground">{protocolo.motorista_nome}</span></p>
                 </div>
