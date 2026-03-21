@@ -105,8 +105,10 @@ export default function Sobras() {
   const [sobras, setSobras] = useState<SobraProtocolo[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroStatus, setFiltroStatus] = useState('todos');
+  const [filtroUnidade, setFiltroUnidade] = useState('todas');
   const [busca, setBusca] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const { unidades } = useUnidadesDB();
   const [totalCount, setTotalCount] = useState(0);
   const [contadores, setContadores] = useState({ pendente: 0, tratamento: 0, resolvido: 0 });
   const [detalheSobra, setDetalheSobra] = useState<SobraProtocolo | null>(null);
