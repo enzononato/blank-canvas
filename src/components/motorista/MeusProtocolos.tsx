@@ -45,8 +45,32 @@ interface ProtocoloSimples {
 }
 
 // Verificar se protocolo foi reaberto
-const foiReaberto = (observacoesLog?: ObservacaoLog[]): boolean => {
-  return !!observacoesLog?.some(log => log.acao === 'Reabriu o protocolo');
+const isObservacaoLog = (value: unknown): value is ObservacaoLog => {
+  if (!value || typeof value !== 'object') return false;
+  const log = value as Partial<ObservacaoLog>;
+  return typeof log.acao === 'string';
+};
+
+const normalizarObservacoesLog = (observacoesLog?: unknown): ObservacaoLog[] => {
+  if (Array.isArray(observacoesLog)) {
+    return observacoesLog.filter(isObservacaoLog);
+  }
+
+  if (typeof observacoesLog === 'string') {
+    try {
+      const parsed = JSON.parse(observacoesLog);
+      return Array.isArray(parsed) ? parsed.filter(isObservacaoLog) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+};
+
+const foiReaberto = (observacoesLog?: unknown): boolean => {
+  const logs = normalizarObservacoesLog(observacoesLog);
+  return logs.some((log) => log.acao === 'Reabriu o protocolo');
 };
 
 const HISTORICO_MOTORISTA_ACOES = [
@@ -58,8 +82,8 @@ const HISTORICO_MOTORISTA_ACOES = [
   'Encerrou o protocolo (entrega final)',
 ] as const;
 
-const getHistoricoMotorista = (observacoesLog?: ObservacaoLog[], status?: ProtocoloSimples['status']) => {
-  const logs = observacoesLog || [];
+const getHistoricoMotorista = (observacoesLog?: unknown, status?: ProtocoloSimples['status']) => {
+  const logs = normalizarObservacoesLog(observacoesLog);
 
   return logs.filter((log) => {
     if (status === 'encerrado') return false;
@@ -73,7 +97,7 @@ const getHistoricoMotorista = (observacoesLog?: ObservacaoLog[], status?: Protoc
 };
 
 const formatarTextoHistoricoMotorista = (log: ObservacaoLog) => {
-  const texto = (log.texto || '').trim();
+  const texto = typeof log.texto === 'string' ? log.texto.trim() : '';
 
   if (log.acao !== 'Alterou produtos do protocolo' && log.acao !== 'Alterou produtos') {
     return {
