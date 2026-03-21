@@ -209,10 +209,7 @@ export default function Sobras() {
 
   return (
     <div className="space-y-6">
-      <ContentHeader
-        title="Sobras em Rota"
-        description="Gerencie os registros de pós-rota dos motoristas"
-      />
+      <ContentHeader />
 
       {/* Cards de resumo */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
