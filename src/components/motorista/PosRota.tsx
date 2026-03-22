@@ -126,10 +126,8 @@ export function PosRota({ motorista }: PosRotaProps) {
   }, [fetchContadores]);
 
   useEffect(() => {
-    if (abaAtiva === 'pendentes') fetchSobras('aberto');
-    else if (abaAtiva === 'em_tratamento') fetchSobras('em_andamento');
-    else if (abaAtiva === 'resolvido') fetchSobras('encerrado');
-  }, [abaAtiva, fetchSobras]);
+    if (abaAtiva === 'lista') fetchSobras(statusFiltro);
+  }, [abaAtiva, statusFiltro, fetchSobras]);
 
   const handlePdvChange = (value: string, pdv?: { codigo: string }) => {
     setCodigoPdv(value);
