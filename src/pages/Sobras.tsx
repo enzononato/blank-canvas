@@ -406,7 +406,6 @@ export default function Sobras() {
                 <TableHead className="min-w-[100px]">Mapa</TableHead>
                 <TableHead className="min-w-[120px]">Tipo</TableHead>
                 <TableHead className="min-w-[150px]">Motorista</TableHead>
-                <TableHead className="min-w-[80px]">Unidade</TableHead>
                 <TableHead className="min-w-[80px]">PDV</TableHead>
                 <TableHead className="min-w-[80px]">NF</TableHead>
                 <TableHead className="min-w-[160px]">Ações</TableHead>
