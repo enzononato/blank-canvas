@@ -457,7 +457,6 @@ export default function Sobras() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm">{sobra.motorista_nome}</TableCell>
-                    <TableCell className="text-sm">{sobra.motorista_unidade || '-'}</TableCell>
                     <TableCell className="font-mono text-sm">{sobra.codigo_pdv || '-'}</TableCell>
                     <TableCell className="text-sm">{sobra.nota_fiscal || '-'}</TableCell>
                     <TableCell>
