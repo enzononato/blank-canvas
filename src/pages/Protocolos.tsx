@@ -213,12 +213,12 @@ export default function Protocolos() {
 
         return searchMatch && statusMatch && periodoMatch && dataInicialMatch && dataFinalMatch && lancadoMatch && validadoMatch && tipoMatch;
       })
+      .map(p => ({ p, sla: calcularSlaDias(p.data, p.status, p.observacoesLog) }))
       .sort((a, b) => {
-        const slaA = calcularSlaDias(a.data, a.status, a.observacoesLog);
-        const slaB = calcularSlaDias(b.data, b.status, b.observacoesLog);
-        if (slaB !== slaA) return slaB - slaA;
-        return a.numero.localeCompare(b.numero);
-      });
+        if (b.sla !== a.sla) return b.sla - a.sla;
+        return a.p.numero.localeCompare(b.p.numero);
+      })
+      .map(({ p }) => p);
   }, [
     protocolos,
     isAdmin,
