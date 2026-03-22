@@ -560,6 +560,18 @@ export default function Sobras() {
                           Resolver
                         </Button>
                       )}
+                      {isAdmin && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          disabled={excluindoSobra === sobra.id}
+                          onClick={() => handleExcluirSobra(sobra)}
+                          title="Excluir sobra (apenas admin)"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>
