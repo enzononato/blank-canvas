@@ -792,7 +792,7 @@ export function PosRota({ motorista }: PosRotaProps) {
             <Button
               onClick={handleSubmit}
               disabled={!canSubmit || isSubmitting}
-              className="w-full h-12 text-sm font-semibold rounded-xl"
+              className="w-full h-10 text-xs font-semibold rounded-lg"
             >
               {isSubmitting ? (
                 <>
