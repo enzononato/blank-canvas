@@ -149,6 +149,9 @@ export default function Protocolos() {
       // Não mostrar protocolos ocultos (exceto para admin que os ocultou)
       if (p.oculto) return false;
       
+      // Não mostrar protocolos de pós-rota (devem aparecer apenas em Sobras)
+      if (p.tipoReposicao === 'pos_rota') return false;
+      
       // Filtrar por unidade do motorista
       if (!isAdmin) {
         const userUnidades = (user?.unidade || '').split(',').map(u => u.trim());
