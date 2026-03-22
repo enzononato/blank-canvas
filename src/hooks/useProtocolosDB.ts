@@ -85,7 +85,7 @@ function dbToProtocolo(db: ProtocoloDB): Protocolo {
     produtos: db.produtos || [],
     fotosProtocolo: db.fotos_protocolo || undefined,
     observacaoGeral: db.observacao_geral || undefined,
-    observacoesLog: db.observacoes_log || [],
+    observacoesLog: Array.isArray(db.observacoes_log) ? db.observacoes_log as unknown as ObservacaoLog[] : [],
     mensagemEncerramento: db.mensagem_encerramento || undefined,
     arquivoEncerramento: db.arquivo_encerramento || undefined,
     oculto: db.oculto ?? false,
