@@ -56,6 +56,13 @@ const safeObsLog = (logs: unknown): ObservacaoLog[] => {
   return [];
 };
 
+// Helper to parse dates in both dd/MM/yyyy and yyyy-MM-dd formats
+const parseFlexDate = (dateStr: string): Date => {
+  return dateStr.includes('-') 
+    ? parse(dateStr, 'yyyy-MM-dd', new Date()) 
+    : parse(dateStr, 'dd/MM/yyyy', new Date());
+};
+
 
 const COLORS = ['hsl(38, 92%, 50%)', 'hsl(199, 89%, 48%)', 'hsl(160, 84%, 39%)'];
 
