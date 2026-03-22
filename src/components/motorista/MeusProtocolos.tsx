@@ -232,9 +232,9 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
   const [copiadoIdEncerramento, setCopiadoIdEncerramento] = useState<string | null>(null);
   
-  // Paginação para encerrados
-  const [paginaEncerrados, setPaginaEncerrados] = useState(1);
-  const ITENS_POR_PAGINA = 6;
+  // Paginação universal
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const ITENS_POR_PAGINA = 5;
   
   // Modal states
   const [showBuscaPdv, setShowBuscaPdv] = useState(false);
