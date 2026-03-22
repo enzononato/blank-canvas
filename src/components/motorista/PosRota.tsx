@@ -46,9 +46,12 @@ interface SobraResumo {
   observacao_geral: string | null;
 }
 
+const ITEMS_PER_PAGE = 4;
+
 export function PosRota({ motorista }: PosRotaProps) {
   const [abaAtiva, setAbaAtiva] = useState<AbaAtiva>('form');
   const [statusFiltro, setStatusFiltro] = useState<string>('aberto');
+  const [paginaAtual, setPaginaAtual] = useState(1);
   const [mapa, setMapa] = useState('');
   const [notaFiscal, setNotaFiscal] = useState('');
   const [tipo, setTipo] = useState('');
