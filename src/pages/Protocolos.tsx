@@ -683,7 +683,7 @@ export default function Protocolos() {
       </p>
 
       {/* Table */}
-      <div className="bg-card rounded-xl p-4 shadow-md animate-fade-in overflow-x-auto border border-border/50">
+      <div className={cn("bg-card rounded-xl p-4 shadow-md animate-fade-in overflow-x-auto border border-border/50 transition-opacity", isPending && "opacity-50")}>
         <table className="w-full border-collapse">
           <thead>
             <tr className="bg-muted/50 border-b border-border">
