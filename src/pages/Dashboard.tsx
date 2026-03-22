@@ -25,7 +25,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { format, isToday, parseISO, differenceInHours, differenceInDays, subDays, parse, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { format, isToday, parseISO, differenceInHours, differenceInDays, subDays, subMonths, startOfMonth, endOfMonth, parse, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
