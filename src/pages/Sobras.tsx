@@ -409,7 +409,6 @@ export default function Sobras() {
                 <TableHead className="min-w-[80px]">Unidade</TableHead>
                 <TableHead className="min-w-[80px]">PDV</TableHead>
                 <TableHead className="min-w-[80px]">NF</TableHead>
-                <TableHead className="min-w-[120px]">Status</TableHead>
                 <TableHead className="min-w-[160px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -417,14 +416,14 @@ export default function Sobras() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 10 }).map((_, j) => (
+                    {Array.from({ length: 9 }).map((_, j) => (
                       <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : sobras.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     <Package className="w-8 h-8 mx-auto mb-2 opacity-50" />
                     Nenhuma sobra encontrada
                   </TableCell>
@@ -462,7 +461,6 @@ export default function Sobras() {
                     <TableCell className="text-sm">{sobra.motorista_unidade || '-'}</TableCell>
                     <TableCell className="font-mono text-sm">{sobra.codigo_pdv || '-'}</TableCell>
                     <TableCell className="text-sm">{sobra.nota_fiscal || '-'}</TableCell>
-                    <TableCell>{getStatusBadge(sobra.status)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Button
