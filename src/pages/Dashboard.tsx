@@ -307,7 +307,7 @@ export default function Dashboard() {
         
         const abertos = protocolosFiltrados.filter(p => {
           try {
-            const d = parse(p.data, 'dd/MM/yyyy', new Date());
+            const d = parseFlexDate(p.data);
             return d >= startOfDay(weekStart) && d <= endOfDay(weekEnd);
           } catch { return false; }
         }).length;
