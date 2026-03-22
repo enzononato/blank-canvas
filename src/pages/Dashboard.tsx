@@ -317,7 +317,7 @@ export default function Dashboard() {
           const logEnc = safeObsLog(p.observacoesLog).find(l => l.acao?.startsWith('Encerrou o protocolo'));
           if (!logEnc?.data) return false;
           try {
-            const d = parse(logEnc.data, 'dd/MM/yyyy', new Date());
+            const d = parseFlexDate(logEnc.data);
             return d >= startOfDay(weekStart) && d <= endOfDay(weekEnd);
           } catch { return false; }
         }).length;
