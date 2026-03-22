@@ -42,8 +42,7 @@ import {
   Line,
   Pie,
   Cell,
-  Legend,
-  LabelList
+  Legend
 } from 'recharts';
 import { ObservacaoLog } from '@/types';
 import { DateRange } from 'react-day-picker';
