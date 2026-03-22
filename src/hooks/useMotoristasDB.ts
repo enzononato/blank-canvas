@@ -57,7 +57,7 @@ export function useMotoristasDB() {
         .order('nome', { ascending: true });
 
       if (fetchError) throw fetchError;
-      return (data as MotoristaPublicDB[]).map(dbToMotorista);
+      return (data as unknown as MotoristaPublicDB[]).map(dbToMotorista);
     },
     staleTime: 1000 * 60 * 5,
   });
