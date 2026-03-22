@@ -731,7 +731,7 @@ export default function Dashboard() {
             try {
               const dataEnc = getDataEncerramentoFromLog(p.observacoesLog);
               if (dataEnc) {
-                const parsed = dataEnc.includes('-') ? parse(dataEnc, 'yyyy-MM-dd', new Date()) : parse(dataEnc, 'dd/MM/yyyy', new Date());
+                const parsed = parseFlexDate(dataEnc);
                 return isToday(parsed);
               }
               return false;
