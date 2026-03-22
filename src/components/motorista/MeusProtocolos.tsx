@@ -79,7 +79,6 @@ const normalizarObservacoesLog = (observacoesLog?: unknown): ObservacaoLog[] => 
 
 const foiReaberto = (observacoesLog?: unknown): boolean => {
   const logs = normalizarObservacoesLog(observacoesLog);
-  if (!Array.isArray(logs)) return false;
   return logs.some((log) => log.acao === 'Reabriu o protocolo');
 };
 
@@ -94,7 +93,6 @@ const HISTORICO_MOTORISTA_ACOES = [
 
 const getHistoricoMotorista = (observacoesLog?: unknown, status?: ProtocoloSimples['status']) => {
   const logs = normalizarObservacoesLog(observacoesLog);
-  if (!Array.isArray(logs)) return [];
 
   return logs.filter((log) => {
     if (status === 'encerrado') return false;

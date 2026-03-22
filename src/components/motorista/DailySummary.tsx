@@ -20,6 +20,7 @@ export function DailySummary({ motorista }: DailySummaryProps) {
         .select('status')
         .eq('motorista_codigo', motorista.codigo)
         .eq('data', hoje)
+        .eq('ativo', true)
         .or('oculto.is.null,oculto.eq.false');
 
       if (data) {
