@@ -436,10 +436,8 @@ export function MeusProtocolos({ motorista }: MeusProtocolosProps) {
       );
     }
 
-    // Aplicar paginação para encerrados
-    const listaExibida = filtroStatus === 'encerrados' 
-      ? protocolos.slice((paginaEncerrados - 1) * ITENS_POR_PAGINA, paginaEncerrados * ITENS_POR_PAGINA)
-      : protocolos;
+    // Aplicar paginação para todas as abas
+    const listaExibida = protocolos.slice((paginaAtual - 1) * ITENS_POR_PAGINA, paginaAtual * ITENS_POR_PAGINA);
 
     return listaExibida.map((protocolo) => {
       const isExpanded = expandedId === protocolo.id;
