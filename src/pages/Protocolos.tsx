@@ -194,7 +194,7 @@ export default function Protocolos() {
       // Filtro de data inicial
       let dataInicialMatch = true;
       if (dataInicialFilter) {
-        const dataProtocolo = parse(p.data, 'dd/MM/yyyy', new Date());
+        const dataProtocolo = parseFlexDate(p.data);
         const dataInicial = parseISO(dataInicialFilter);
         dataInicialMatch = !isBefore(dataProtocolo, dataInicial);
       }
