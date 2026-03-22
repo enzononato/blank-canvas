@@ -33,7 +33,7 @@ const TIPOS_POS_ROTA = [
   { value: 'erro_entrega', label: 'Erro de Entrega' },
 ];
 
-type AbaAtiva = 'form' | 'pendentes' | 'em_tratamento' | 'resolvido';
+type AbaAtiva = 'form' | 'lista';
 
 interface SobraResumo {
   id: string;
