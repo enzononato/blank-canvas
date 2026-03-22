@@ -480,19 +480,24 @@ export default function Dashboard() {
     return Object.values(map).sort((a, b) => a.unidade.localeCompare(b.unidade));
   }, [protocolos, unidades]);
 
-  // 2. Motorista × Tipo de Reposição (Top 10)
+  // 2. Motorista × Tipo de Reposição (Top 10 - Horizontal)
   const motoristaXTipoData = useMemo(() => {
-    const map: Record<string, { motorista: string; inversao: number; avaria: number; falta: number }> = {};
+    const map: Record<string, { motorista: string; inversao: number; avaria: number; falta: number; total: number }> = {};
     protocolosFiltrados.forEach(p => {
       const nome = p.motorista.nome;
-      if (!map[nome]) map[nome] = { motorista: nome, inversao: 0, avaria: 0, falta: 0 };
-      if (p.tipoReposicao === 'INVERSAO') map[nome].inversao++;
-      else if (p.tipoReposicao === 'AVARIA') map[nome].avaria++;
-      else if (p.tipoReposicao === 'FALTA') map[nome].falta++;
+      if (!map[nome]) map[nome] = { motorista: nome, inversao: 0, avaria: 0, falta: 0, total: 0 };
+      if (p.tipoReposicao === 'INVERSAO') { map[nome].inversao++; map[nome].total++; }
+      else if (p.tipoReposicao === 'AVARIA') { map[nome].avaria++; map[nome].total++; }
+      else if (p.tipoReposicao === 'FALTA') { map[nome].falta++; map[nome].total++; }
     });
     return Object.values(map)
-      .sort((a, b) => (b.inversao + b.avaria + b.falta) - (a.inversao + a.avaria + a.falta))
-      .slice(0, 10);
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10)
+      .map(item => ({
+        ...item,
+        // Truncar nome para caber no eixo Y
+        motorista: item.motorista.length > 18 ? item.motorista.substring(0, 18) + '…' : item.motorista
+      }));
   }, [protocolosFiltrados]);
 
   // 3. PDV × Frequência (Top 10 - Barras Horizontais)
@@ -1192,19 +1197,19 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
 
-        {/* 2. Motorista × Tipo de Reposição */}
+        {/* 2. Motorista × Tipo de Reposição (Horizontal) */}
         <div className="card-stats animate-slide-up" style={{ animationDelay: '1100ms' }}>
           <h3 className="font-heading text-base font-semibold mb-4">Top 10 Motoristas por Tipo</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={motoristaXTipoData} margin={{ top: 20, right: 12, left: -8, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="motorista" stroke="hsl(var(--muted-foreground))" fontSize={9} angle={-20} textAnchor="end" height={50} />
-              <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} fontSize={11} />
+          <ResponsiveContainer width="100%" height={380}>
+            <BarChart data={motoristaXTipoData} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+              <XAxis type="number" stroke="hsl(var(--muted-foreground))" allowDecimals={false} fontSize={11} />
+              <YAxis type="category" dataKey="motorista" stroke="hsl(var(--muted-foreground))" fontSize={10} width={130} tick={{ fontSize: 10 }} />
               <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '11px' }} />
               <Legend wrapperStyle={{ paddingTop: '10px' }} formatter={(value) => <span className="text-xs text-muted-foreground capitalize">{value}</span>} />
-              <Bar dataKey="inversao" name="Inversão" fill="hsl(199, 89%, 48%)" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="avaria" name="Avaria" fill="hsl(38, 92%, 50%)" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="falta" name="Falta" fill="hsl(160, 84%, 39%)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="inversao" name="Inversão" fill="hsl(199, 89%, 48%)" radius={[0, 4, 4, 0]} barSize={8} />
+              <Bar dataKey="avaria" name="Avaria" fill="hsl(38, 92%, 50%)" radius={[0, 4, 4, 0]} barSize={8} />
+              <Bar dataKey="falta" name="Falta" fill="hsl(160, 84%, 39%)" radius={[0, 4, 4, 0]} barSize={8} />
             </BarChart>
           </ResponsiveContainer>
         </div>
