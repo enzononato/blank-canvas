@@ -1167,6 +1167,76 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Gráficos de Cruzamento */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* 1. Tipo de Reposição × Unidade */}
+        <div className="card-stats animate-slide-up" style={{ animationDelay: '1050ms' }}>
+          <h3 className="font-heading text-base font-semibold mb-4">Tipo de Reposição por Unidade</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={tipoXUnidadeData} margin={{ top: 20, right: 12, left: -8, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="unidade" stroke="hsl(var(--muted-foreground))" fontSize={10} />
+              <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} fontSize={11} />
+              <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '11px' }} />
+              <Legend wrapperStyle={{ paddingTop: '10px' }} formatter={(value) => <span className="text-xs text-muted-foreground capitalize">{value}</span>} />
+              <Bar dataKey="inversao" name="Inversão" stackId="a" fill="hsl(199, 89%, 48%)" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="avaria" name="Avaria" stackId="a" fill="hsl(38, 92%, 50%)" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="falta" name="Falta" stackId="a" fill="hsl(160, 84%, 39%)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* 2. Motorista × Tipo de Reposição */}
+        <div className="card-stats animate-slide-up" style={{ animationDelay: '1100ms' }}>
+          <h3 className="font-heading text-base font-semibold mb-4">Top 10 Motoristas por Tipo</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={motoristaXTipoData} margin={{ top: 20, right: 12, left: -8, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="motorista" stroke="hsl(var(--muted-foreground))" fontSize={9} angle={-20} textAnchor="end" height={50} />
+              <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} fontSize={11} />
+              <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '11px' }} />
+              <Legend wrapperStyle={{ paddingTop: '10px' }} formatter={(value) => <span className="text-xs text-muted-foreground capitalize">{value}</span>} />
+              <Bar dataKey="inversao" name="Inversão" fill="hsl(199, 89%, 48%)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="avaria" name="Avaria" fill="hsl(38, 92%, 50%)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="falta" name="Falta" fill="hsl(160, 84%, 39%)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* 3. PDV × Frequência */}
+        <div className="card-stats animate-slide-up" style={{ animationDelay: '1150ms' }}>
+          <h3 className="font-heading text-base font-semibold mb-4">Top 10 PDVs com Mais Ocorrências</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={pdvFrequenciaData} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis type="number" stroke="hsl(var(--muted-foreground))" allowDecimals={false} fontSize={11} />
+              <YAxis type="category" dataKey="nome" stroke="hsl(var(--muted-foreground))" fontSize={9} width={100} />
+              <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '11px' }} />
+              <Legend wrapperStyle={{ paddingTop: '10px' }} formatter={(value) => <span className="text-xs text-muted-foreground capitalize">{value}</span>} />
+              <Bar dataKey="inversao" name="Inversão" stackId="a" fill="hsl(199, 89%, 48%)" />
+              <Bar dataKey="avaria" name="Avaria" stackId="a" fill="hsl(38, 92%, 50%)" />
+              <Bar dataKey="falta" name="Falta" stackId="a" fill="hsl(160, 84%, 39%)" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* 4. Taxa de Resolução por Período */}
+        <div className="card-stats animate-slide-up" style={{ animationDelay: '1200ms' }}>
+          <h3 className="font-heading text-base font-semibold mb-4">Taxa de Resolução (Últimos 6 Meses)</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={taxaResolucaoData} margin={{ top: 20, right: 12, left: -8, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+              <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} fontSize={11} />
+              <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '11px' }} />
+              <Legend wrapperStyle={{ paddingTop: '10px' }} formatter={(value) => <span className="text-xs text-muted-foreground capitalize">{value}</span>} />
+              <Line type="monotone" dataKey="abertos" name="Abertos" stroke="hsl(38, 92%, 50%)" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+              <Line type="monotone" dataKey="encerrados" name="Encerrados" stroke="hsl(160, 84%, 39%)" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
       {/* Recent Protocols */}
       <div className="card-stats animate-slide-up" style={{ animationDelay: '1100ms' }}>
         <h3 className="font-heading text-sm font-semibold mb-2">Protocolos Recentes</h3>
