@@ -461,7 +461,6 @@ export default function Sobras() {
                     <TableCell className="text-sm">{sobra.motorista_unidade || '-'}</TableCell>
                     <TableCell className="font-mono text-sm">{sobra.codigo_pdv || '-'}</TableCell>
                     <TableCell className="text-sm">{sobra.nota_fiscal || '-'}</TableCell>
-                    <TableCell>{getStatusBadge(sobra.status)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Button
