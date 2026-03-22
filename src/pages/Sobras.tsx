@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useUnidadesDB } from '@/hooks/useUnidadesDB';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuditLog } from '@/hooks/useAuditLog';
-import { ContentHeader } from '@/components/layout/ContentHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,14 +16,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -32,7 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { TablePagination } from '@/components/ui/TablePagination';
-import { Package, RefreshCw, Clock, CheckCircle, AlertTriangle, MapPin, FileText, Truck, Eye, ImageIcon, Warehouse, MessageSquare, Send } from 'lucide-react';
+import { Package, RefreshCw, Clock, CheckCircle, AlertTriangle, MapPin, FileText, Truck, Eye, ImageIcon, Warehouse, MessageSquare, Send, Hash, Calendar, Route } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -76,6 +67,15 @@ const getStatusBadge = (status: string) => {
       return <Badge variant="outline" className="whitespace-nowrap border-green-500 text-green-600 bg-green-50 dark:bg-green-500/10"><CheckCircle className="w-3 h-3 mr-1" />Resolvido</Badge>;
     default:
       return <Badge variant="outline">{status}</Badge>;
+  }
+};
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'aberto': return 'border-l-amber-500';
+    case 'em_andamento': return 'border-l-blue-500';
+    case 'encerrado': return 'border-l-green-500';
+    default: return 'border-l-muted';
   }
 };
 
@@ -124,9 +124,9 @@ export default function Sobras() {
 
   const fetchContadores = useCallback(async () => {
     const [pRes, tRes, rRes] = await Promise.all([
-      supabase.from('protocolos').select('*', { count: 'exact', head: true }).eq('tipo_reposicao', 'pos_rota').eq('status', 'aberto'),
-      supabase.from('protocolos').select('*', { count: 'exact', head: true }).eq('tipo_reposicao', 'pos_rota').eq('status', 'em_andamento'),
-      supabase.from('protocolos').select('*', { count: 'exact', head: true }).eq('tipo_reposicao', 'pos_rota').eq('status', 'encerrado'),
+      supabase.from('protocolos').select('*', { count: 'exact', head: true }).eq('tipo_reposicao', 'pos_rota').eq('status', 'aberto').eq('ativo', true),
+      supabase.from('protocolos').select('*', { count: 'exact', head: true }).eq('tipo_reposicao', 'pos_rota').eq('status', 'em_andamento').eq('ativo', true),
+      supabase.from('protocolos').select('*', { count: 'exact', head: true }).eq('tipo_reposicao', 'pos_rota').eq('status', 'encerrado').eq('ativo', true),
     ]);
     setContadores({
       pendente: pRes.count || 0,
@@ -142,6 +142,7 @@ export default function Sobras() {
         .from('protocolos')
         .select('id, numero, data, hora, status, causa, mapa, nota_fiscal, codigo_pdv, motorista_nome, motorista_unidade, motorista_codigo, observacao_geral, created_at, observacoes_log, fotos_protocolo', { count: 'exact' })
         .eq('tipo_reposicao', 'pos_rota')
+        .eq('ativo', true)
         .order('created_at', { ascending: false });
 
       if (filtroStatus !== 'todos') {
@@ -316,46 +317,75 @@ export default function Sobras() {
   };
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+  const totalGeral = contadores.pendente + contadores.tratamento + contadores.resolvido;
+
+  const getFotosCount = (sobra: SobraProtocolo) => {
+    const fotos = sobra.fotos_protocolo as Record<string, unknown> | null;
+    const fotosSobra = fotos?.fotosSobra as string[] | undefined;
+    return fotosSobra?.length || 0;
+  };
+
+  const getLogsCount = (sobra: SobraProtocolo) => {
+    if (!Array.isArray(sobra.observacoes_log)) return 0;
+    return sobra.observacoes_log.length;
+  };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Sobras em Rota</h1>
-        <p className="text-sm text-muted-foreground">Gerencie os registros de pós-rota dos motoristas</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Sobras em Rota</h1>
+          <p className="text-sm text-muted-foreground">
+            {totalGeral} registro{totalGeral !== 1 ? 's' : ''} no total
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => { fetchSobras(); fetchContadores(); }} className="gap-1.5">
+          <RefreshCw className="w-3.5 h-3.5" />
+          Atualizar
+        </Button>
       </div>
 
       {/* Cards de resumo */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setFiltroStatus('aberto'); setCurrentPage(1); }}>
+        <Card
+          className={`cursor-pointer transition-all hover:shadow-md ${filtroStatus === 'aberto' ? 'ring-2 ring-amber-500 shadow-md' : ''}`}
+          onClick={() => { setFiltroStatus(filtroStatus === 'aberto' ? 'todos' : 'aberto'); setCurrentPage(1); }}
+        >
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-500/20">
+            <div className="p-2.5 rounded-xl bg-amber-100 dark:bg-amber-500/20">
               <Clock className="w-5 h-5 text-amber-600" />
             </div>
             <div>
               <p className="text-2xl font-bold">{contadores.pendente}</p>
-              <p className="text-sm text-muted-foreground">Pendentes</p>
+              <p className="text-xs text-muted-foreground font-medium">Pendentes</p>
             </div>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setFiltroStatus('em_andamento'); setCurrentPage(1); }}>
+        <Card
+          className={`cursor-pointer transition-all hover:shadow-md ${filtroStatus === 'em_andamento' ? 'ring-2 ring-blue-500 shadow-md' : ''}`}
+          onClick={() => { setFiltroStatus(filtroStatus === 'em_andamento' ? 'todos' : 'em_andamento'); setCurrentPage(1); }}
+        >
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-500/20">
+            <div className="p-2.5 rounded-xl bg-blue-100 dark:bg-blue-500/20">
               <AlertTriangle className="w-5 h-5 text-blue-600" />
             </div>
             <div>
               <p className="text-2xl font-bold">{contadores.tratamento}</p>
-              <p className="text-sm text-muted-foreground">Em Tratamento</p>
+              <p className="text-xs text-muted-foreground font-medium">Em Tratamento</p>
             </div>
           </CardContent>
         </Card>
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => { setFiltroStatus('encerrado'); setCurrentPage(1); }}>
+        <Card
+          className={`cursor-pointer transition-all hover:shadow-md ${filtroStatus === 'encerrado' ? 'ring-2 ring-green-500 shadow-md' : ''}`}
+          onClick={() => { setFiltroStatus(filtroStatus === 'encerrado' ? 'todos' : 'encerrado'); setCurrentPage(1); }}
+        >
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-green-100 dark:bg-green-500/20">
+            <div className="p-2.5 rounded-xl bg-green-100 dark:bg-green-500/20">
               <CheckCircle className="w-5 h-5 text-green-600" />
             </div>
             <div>
               <p className="text-2xl font-bold">{contadores.resolvido}</p>
-              <p className="text-sm text-muted-foreground">Resolvidos</p>
+              <p className="text-xs text-muted-foreground font-medium">Resolvidos</p>
             </div>
           </CardContent>
         </Card>
@@ -390,126 +420,153 @@ export default function Sobras() {
             ))}
           </SelectContent>
         </Select>
-        <Button variant="outline" size="icon" onClick={() => { fetchSobras(); fetchContadores(); }}>
-          <RefreshCw className="w-4 h-4" />
-        </Button>
       </div>
 
-      {/* Tabela */}
-      <div className="border rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="min-w-[100px]">Nº Protocolo</TableHead>
-                <TableHead className="min-w-[120px]">Data</TableHead>
-                <TableHead className="min-w-[100px]">Mapa</TableHead>
-                <TableHead className="min-w-[120px]">Tipo</TableHead>
-                <TableHead className="min-w-[150px]">Motorista</TableHead>
-                <TableHead className="min-w-[80px]">PDV</TableHead>
-                <TableHead className="min-w-[80px]">NF</TableHead>
-                <TableHead className="min-w-[160px]">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    {Array.from({ length: 8 }).map((_, j) => (
-                      <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : sobras.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                    <Package className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    Nenhuma sobra encontrada
-                  </TableCell>
-                </TableRow>
-              ) : (
-                sobras.map(sobra => (
-                  <TableRow key={sobra.id} className="hover:bg-muted/50 transition-colors">
-                    <TableCell className="font-mono text-sm font-bold text-primary">
-                      {sobra.numero}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {sobra.created_at ? format(parseISO(sobra.created_at), 'dd/MM/yy HH:mm') : sobra.data}
-                    </TableCell>
-                    <TableCell className="font-mono text-sm font-medium">
-                      <span className="flex items-center gap-1.5">
-                        {sobra.mapa || '-'}
-                        {(() => {
-                          const fotos = sobra.fotos_protocolo as Record<string, unknown> | null;
-                          const fotosSobra = fotos?.fotosSobra as string[] | undefined;
-                          return fotosSobra && fotosSobra.length > 0 ? (
-                            <span className="inline-flex items-center gap-0.5 text-primary" title={`${fotosSobra.length} foto(s)`}>
-                              <ImageIcon className="w-3.5 h-3.5" />
-                              <span className="text-xs">{fotosSobra.length}</span>
-                            </span>
-                          ) : null;
-                        })()}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={getTipoBadgeColor(sobra.causa)}>
-                        {getTipoFromCausa(sobra.causa)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">{sobra.motorista_nome}</TableCell>
-                    <TableCell className="font-mono text-sm">{sobra.codigo_pdv || '-'}</TableCell>
-                    <TableCell className="text-sm">{sobra.nota_fiscal || '-'}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setDetalheSobra(sobra)}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        {sobra.status === 'aberto' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 text-xs"
-                            disabled={updatingStatus === sobra.id}
-                            onClick={() => handleStatusChange(sobra, 'em_andamento')}
-                          >
-                            Tratar
-                          </Button>
-                        )}
-                        {isErroCarregamento(sobra.causa) && sobra.status !== 'encerrado' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 text-xs border-purple-500 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-500/10"
-                            disabled={updatingStatus === sobra.id}
-                            onClick={() => handleDevolverEstoque(sobra)}
-                          >
-                            <Warehouse className="w-3.5 h-3.5 mr-1" />
-                            Estoque
-                          </Button>
-                        )}
-                        {(sobra.status === 'aberto' || sobra.status === 'em_andamento') && (
-                          <Button
-                            size="sm"
-                            className="h-8 text-xs bg-green-600 hover:bg-green-700"
-                            disabled={updatingStatus === sobra.id}
-                            onClick={() => handleStatusChange(sobra, 'encerrado')}
-                          >
-                            Resolver
-                          </Button>
-                        )}
+      {/* Lista de cards */}
+      <div className="space-y-3">
+        {loading ? (
+          Array.from({ length: 5 }).map((_, i) => (
+            <Card key={i}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-4">
+                  <Skeleton className="h-10 w-10 rounded-lg" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="h-3 w-2/3" />
+                  </div>
+                  <Skeleton className="h-8 w-20" />
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        ) : sobras.length === 0 ? (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <Package className="w-12 h-12 mx-auto mb-3 text-muted-foreground/40" />
+              <p className="text-muted-foreground font-medium">Nenhuma sobra encontrada</p>
+              <p className="text-xs text-muted-foreground mt-1">Tente alterar os filtros</p>
+            </CardContent>
+          </Card>
+        ) : (
+          sobras.map(sobra => {
+            const fotosCount = getFotosCount(sobra);
+            const logsCount = getLogsCount(sobra);
+            return (
+              <Card
+                key={sobra.id}
+                className={`border-l-4 ${getStatusColor(sobra.status)} hover:shadow-md transition-all cursor-pointer group`}
+                onClick={() => setDetalheSobra(sobra)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    {/* Info principal */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                        <span className="font-mono text-sm font-bold text-primary flex items-center gap-1">
+                          <Hash className="w-3.5 h-3.5" />
+                          {sobra.numero}
+                        </span>
+                        {getStatusBadge(sobra.status)}
+                        <Badge variant="outline" className={`text-xs ${getTipoBadgeColor(sobra.causa)}`}>
+                          {getTipoFromCausa(sobra.causa)}
+                        </Badge>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+                        <span className="flex items-center gap-1">
+                          <Truck className="w-3 h-3" />
+                          {sobra.motorista_nome}
+                        </span>
+                        {sobra.mapa && (
+                          <span className="flex items-center gap-1">
+                            <Route className="w-3 h-3" />
+                            Mapa {sobra.mapa}
+                          </span>
+                        )}
+                        {sobra.codigo_pdv && (
+                          <span className="flex items-center gap-1 font-mono">
+                            <MapPin className="w-3 h-3" />
+                            PDV {sobra.codigo_pdv}
+                          </span>
+                        )}
+                        {sobra.nota_fiscal && (
+                          <span className="flex items-center gap-1 font-mono">
+                            <FileText className="w-3 h-3" />
+                            NF {sobra.nota_fiscal}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {sobra.created_at ? format(parseISO(sobra.created_at), 'dd/MM/yy HH:mm') : sobra.data}
+                        </span>
+                      </div>
+
+                      {/* Indicadores */}
+                      {(fotosCount > 0 || logsCount > 0 || sobra.observacao_geral) && (
+                        <div className="flex items-center gap-3 mt-2">
+                          {fotosCount > 0 && (
+                            <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                              <ImageIcon className="w-3 h-3" />
+                              {fotosCount} foto{fotosCount > 1 ? 's' : ''}
+                            </span>
+                          )}
+                          {logsCount > 0 && (
+                            <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                              <MessageSquare className="w-3 h-3" />
+                              {logsCount} registro{logsCount > 1 ? 's' : ''}
+                            </span>
+                          )}
+                          {sobra.observacao_geral && (
+                            <span className="text-xs text-muted-foreground truncate max-w-[200px]" title={sobra.observacao_geral}>
+                              "{sobra.observacao_geral}"
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Ações */}
+                    <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
+                      {sobra.status === 'aberto' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs"
+                          disabled={updatingStatus === sobra.id}
+                          onClick={() => handleStatusChange(sobra, 'em_andamento')}
+                        >
+                          Tratar
+                        </Button>
+                      )}
+                      {isErroCarregamento(sobra.causa) && sobra.status !== 'encerrado' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs border-purple-500 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-500/10"
+                          disabled={updatingStatus === sobra.id}
+                          onClick={() => handleDevolverEstoque(sobra)}
+                        >
+                          <Warehouse className="w-3.5 h-3.5 mr-1" />
+                          Estoque
+                        </Button>
+                      )}
+                      {(sobra.status === 'aberto' || sobra.status === 'em_andamento') && (
+                        <Button
+                          size="sm"
+                          className="h-8 text-xs bg-green-600 hover:bg-green-700"
+                          disabled={updatingStatus === sobra.id}
+                          onClick={() => handleStatusChange(sobra, 'encerrado')}
+                        >
+                          Resolver
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })
+        )}
       </div>
 
       {totalPages > 1 && (
@@ -525,11 +582,11 @@ export default function Sobras() {
 
       {/* Modal de detalhes */}
       <Dialog open={!!detalheSobra} onOpenChange={(open) => { if (!open) { setDetalheSobra(null); setComentario(''); } }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Package className="w-5 h-5 text-primary" />
-              Detalhes da Sobra
+              Sobra {detalheSobra?.numero}
             </DialogTitle>
           </DialogHeader>
           {detalheSobra && (
@@ -537,7 +594,7 @@ export default function Sobras() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <p className="text-xs text-muted-foreground">Número</p>
-                  <p className="text-sm font-mono font-medium">{detalheSobra.numero}</p>
+                  <p className="text-sm font-mono font-bold text-primary">{detalheSobra.numero}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Data</p>
@@ -622,7 +679,7 @@ export default function Sobras() {
               {Array.isArray(detalheSobra.observacoes_log) && (detalheSobra.observacoes_log as ObservacaoLog[]).length > 0 && (
                 <div>
                   <p className="text-xs text-muted-foreground mb-2">Histórico</p>
-                  <div className="space-y-2">
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
                     {(detalheSobra.observacoes_log as ObservacaoLog[]).map((log, i) => (
                       <div key={i} className="text-xs bg-muted/30 rounded-lg p-2.5 border border-border/30">
                         <div className="flex items-center justify-between mb-0.5">
