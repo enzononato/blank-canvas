@@ -178,7 +178,7 @@ export default function Protocolos() {
           if (p.status === 'encerrado') {
             const dataEnc = getDataEncerramentoFromLog(p.observacoesLog);
             if (dataEnc) {
-              const parsed = parse(dataEnc, 'dd/MM/yyyy', new Date());
+              const parsed = parseFlexDate(dataEnc);
               periodoMatch = isToday(parsed);
             } else {
               periodoMatch = false;
