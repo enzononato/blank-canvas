@@ -1201,7 +1201,12 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* 1. Tipo de Reposição × Unidade */}
         <div className="card-stats animate-slide-up" style={{ animationDelay: '1050ms' }}>
-          <h3 className="font-heading text-base font-semibold mb-4">Tipo de Reposição por Unidade</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-heading text-base font-semibold">Tipo de Reposição por Unidade</h3>
+            <Button variant="ghost" size="sm" className="h-7 text-[10px] text-muted-foreground" onClick={() => exportChartCSV(tipoXUnidadeData as Record<string, unknown>[], { unidade: 'Unidade', inversao: 'Inversão', avaria: 'Avaria', falta: 'Falta' }, 'tipo_reposicao_unidade')}>
+              <Download size={12} className="mr-1" />CSV
+            </Button>
+          </div>
           <ResponsiveContainer width="100%" height={380}>
             <BarChart
               data={tipoXUnidadeData}
