@@ -461,18 +461,24 @@ export default function Dashboard() {
 
   // ===== NOVOS GRÁFICOS DE CRUZAMENTO =====
 
-  // 1. Tipo de Reposição × Unidade (Barras Empilhadas)
+  // 1. Tipo de Reposição × Unidade (Barras Agrupadas - todas as unidades)
   const tipoXUnidadeData = useMemo(() => {
+    // Inicializar com todas as unidades do sistema
     const map: Record<string, { unidade: string; inversao: number; avaria: number; falta: number }> = {};
-    protocolosFiltrados.forEach(p => {
+    unidades.forEach(u => {
+      map[u.nome] = { unidade: u.nome, inversao: 0, avaria: 0, falta: 0 };
+    });
+    // Contar de TODOS protocolos (sem filtro de unidade selecionada)
+    const todosProtocolos = protocolos.filter(p => !p.oculto && p.tipoReposicao !== 'pos_rota');
+    todosProtocolos.forEach(p => {
       const unidade = p.unidadeNome || 'Sem Unidade';
       if (!map[unidade]) map[unidade] = { unidade, inversao: 0, avaria: 0, falta: 0 };
       if (p.tipoReposicao === 'INVERSAO') map[unidade].inversao++;
       else if (p.tipoReposicao === 'AVARIA') map[unidade].avaria++;
       else if (p.tipoReposicao === 'FALTA') map[unidade].falta++;
     });
-    return Object.values(map).sort((a, b) => (b.inversao + b.avaria + b.falta) - (a.inversao + a.avaria + a.falta));
-  }, [protocolosFiltrados]);
+    return Object.values(map).sort((a, b) => a.unidade.localeCompare(b.unidade));
+  }, [protocolos, unidades]);
 
   // 2. Motorista × Tipo de Reposição (Top 10)
   const motoristaXTipoData = useMemo(() => {
@@ -1179,9 +1185,9 @@ export default function Dashboard() {
               <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} fontSize={11} />
               <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '11px' }} />
               <Legend wrapperStyle={{ paddingTop: '10px' }} formatter={(value) => <span className="text-xs text-muted-foreground capitalize">{value}</span>} />
-              <Bar dataKey="inversao" name="Inversão" stackId="a" fill="hsl(199, 89%, 48%)" radius={[0, 0, 0, 0]} />
-              <Bar dataKey="avaria" name="Avaria" stackId="a" fill="hsl(38, 92%, 50%)" radius={[0, 0, 0, 0]} />
-              <Bar dataKey="falta" name="Falta" stackId="a" fill="hsl(160, 84%, 39%)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="inversao" name="Inversão" fill="hsl(199, 89%, 48%)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="avaria" name="Avaria" fill="hsl(38, 92%, 50%)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="falta" name="Falta" fill="hsl(160, 84%, 39%)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
