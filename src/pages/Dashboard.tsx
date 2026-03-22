@@ -1031,28 +1031,56 @@ export default function Dashboard() {
         {/* Pie Chart */}
         <div className="card-stats animate-slide-up" style={{ animationDelay: '1000ms' }}>
           <h3 className="font-heading text-base font-semibold mb-4">Status dos Protocolos</h3>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={320}>
             <PieChart>
               <Pie
                 data={pieData}
                 cx="50%"
-                cy="50%"
-                innerRadius={50}
-                outerRadius={80}
-                paddingAngle={5}
+                cy="45%"
+                innerRadius={55}
+                outerRadius={90}
+                paddingAngle={4}
                 dataKey="value"
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                fontSize={10}
+                label={({ cx, cy, midAngle, outerRadius, name, value, percent }) => {
+                  const RADIAN = Math.PI / 180;
+                  const radius = outerRadius + 28;
+                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                  if (value === 0) return null;
+                  return (
+                    <text
+                      x={x}
+                      y={y}
+                      textAnchor={x > cx ? 'start' : 'end'}
+                      dominantBaseline="central"
+                      className="fill-foreground"
+                      fontSize={11}
+                      fontWeight={600}
+                    >
+                      {`${value} (${(percent * 100).toFixed(0)}%)`}
+                    </text>
+                  );
+                }}
+                labelLine={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}
               >
                 {pieData.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip />
-              <Legend 
-                wrapperStyle={{ paddingTop: '8px' }}
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                }}
+                formatter={(value: number, name: string) => [`${value} protocolos`, name]}
+              />
+              <Legend
+                verticalAlign="bottom"
+                wrapperStyle={{ paddingTop: '12px' }}
                 formatter={(value) => (
-                  <span className="text-xs text-muted-foreground">{value}</span>
+                  <span className="text-xs text-muted-foreground font-medium">{value}</span>
                 )}
               />
             </PieChart>
