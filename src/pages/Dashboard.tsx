@@ -1235,7 +1235,12 @@ export default function Dashboard() {
 
         {/* 2. Motorista × Tipo de Reposição (Horizontal) */}
         <div className="card-stats animate-slide-up" style={{ animationDelay: '1100ms' }}>
-          <h3 className="font-heading text-base font-semibold mb-4">Top 10 Motoristas por Tipo</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-heading text-base font-semibold">Top 10 Motoristas por Tipo</h3>
+            <Button variant="ghost" size="sm" className="h-7 text-[10px] text-muted-foreground" onClick={() => exportChartCSV(motoristaXTipoData as Record<string, unknown>[], { motorista: 'Motorista', inversao: 'Inversão', avaria: 'Avaria', falta: 'Falta', total: 'Total' }, 'motoristas_por_tipo')}>
+              <Download size={12} className="mr-1" />CSV
+            </Button>
+          </div>
           <ResponsiveContainer width="100%" height={380}>
             <BarChart data={motoristaXTipoData} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
