@@ -178,7 +178,7 @@ export default function Dashboard() {
     const ontem = subDays(new Date(), 1);
     const totalOntem = protocolosFiltrados.filter(p => {
       try {
-        const dataProtocolo = parse(p.data, 'dd/MM/yyyy', new Date());
+        const dataProtocolo = parseFlexDate(p.data);
         return format(dataProtocolo, 'yyyy-MM-dd') === format(ontem, 'yyyy-MM-dd');
       } catch {
         return false;
