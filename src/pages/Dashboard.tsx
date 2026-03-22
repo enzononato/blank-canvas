@@ -271,11 +271,11 @@ export default function Dashboard() {
         const hourEnd = new Date(hourStart);
         hourEnd.setHours(hourStart.getHours() + 4);
         const label = `${format(hourStart, 'HH')}h`;
-        const dateStr = format(today, 'dd/MM/yyyy');
         
         const abertos = protocolosFiltrados.filter(p => {
-          if (p.data !== dateStr) return false;
           try {
+            const dataProtocolo = parseFlexDate(p.data);
+            if (!isToday(dataProtocolo)) return false;
             const [h] = p.hora.split(':').map(Number);
             return h >= hourStart.getHours() && h < hourEnd.getHours();
           } catch { return false; }
@@ -287,13 +287,22 @@ export default function Dashboard() {
       for (let i = 6; i >= 0; i--) {
         const date = subDays(today, i);
         const dayName = days[date.getDay()];
-        const dateStr = format(date, 'dd/MM/yyyy');
+        const targetDateStr = format(date, 'yyyy-MM-dd');
         
-        const abertosNoDia = protocolosFiltrados.filter(p => p.data === dateStr).length;
+        const abertosNoDia = protocolosFiltrados.filter(p => {
+          try {
+            const d = parseFlexDate(p.data);
+            return format(d, 'yyyy-MM-dd') === targetDateStr;
+          } catch { return false; }
+        }).length;
         const encerradosNoDia = protocolosFiltrados.filter(p => {
           if (p.status !== 'encerrado') return false;
-           const logEnc = safeObsLog(p.observacoesLog).find(l => l.acao?.startsWith('Encerrou o protocolo'));
-           return logEnc?.data === dateStr;
+          const logEnc = safeObsLog(p.observacoesLog).find(l => l.acao?.startsWith('Encerrou o protocolo'));
+          if (!logEnc?.data) return false;
+          try {
+            const d = parseFlexDate(logEnc.data);
+            return format(d, 'yyyy-MM-dd') === targetDateStr;
+          } catch { return false; }
         }).length;
         
         result.push({ name: `${dayName} ${format(date, 'dd')}`, abertos: abertosNoDia, encerrados: encerradosNoDia });
