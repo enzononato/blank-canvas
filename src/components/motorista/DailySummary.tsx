@@ -17,7 +17,7 @@ export function DailySummary({ motorista }: DailySummaryProps) {
 
       const { data } = await supabase
         .from('protocolos')
-        .select('status')
+        .select('status, tipo_reposicao')
         .eq('motorista_codigo', motorista.codigo)
         .eq('data', hoje)
         .eq('ativo', true)
