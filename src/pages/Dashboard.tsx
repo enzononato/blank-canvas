@@ -25,7 +25,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { format, isToday, parseISO, differenceInHours, differenceInDays, subDays, parse, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { format, isToday, parseISO, differenceInHours, differenceInDays, subDays, subMonths, startOfMonth, endOfMonth, parse, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,6 +38,8 @@ import {
   Tooltip, 
   ResponsiveContainer,
   PieChart,
+  LineChart,
+  Line,
   Pie,
   Cell,
   Legend,
@@ -308,16 +310,18 @@ export default function Dashboard() {
         result.push({ name: `${dayName} ${format(date, 'dd')}`, abertos: abertosNoDia, encerrados: encerradosNoDia });
       }
     } else {
-      // Últimas 4 semanas
+      // Últimos 4 meses
+      const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
       for (let i = 3; i >= 0; i--) {
-        const weekEnd = subDays(today, i * 7);
-        const weekStart = subDays(weekEnd, 6);
-        const label = `${format(weekStart, 'dd/MM')} - ${format(weekEnd, 'dd/MM')}`;
+        const monthDate = subMonths(today, i);
+        const monthStart = startOfMonth(monthDate);
+        const monthEnd = endOfMonth(monthDate);
+        const label = monthNames[monthDate.getMonth()];
         
         const abertos = protocolosFiltrados.filter(p => {
           try {
             const d = parseFlexDate(p.data);
-            return d >= startOfDay(weekStart) && d <= endOfDay(weekEnd);
+            return d >= monthStart && d <= monthEnd;
           } catch { return false; }
         }).length;
         
@@ -327,7 +331,7 @@ export default function Dashboard() {
           if (!logEnc?.data) return false;
           try {
             const d = parseFlexDate(logEnc.data);
-            return d >= startOfDay(weekStart) && d <= endOfDay(weekEnd);
+            return d >= monthStart && d <= monthEnd;
           } catch { return false; }
         }).length;
         
@@ -455,8 +459,83 @@ export default function Dashboard() {
       .slice(0, 5);
   }, [protocolosFiltrados]);
 
+  // ===== NOVOS GRÁFICOS DE CRUZAMENTO =====
 
+  // 1. Tipo de Reposição × Unidade (Barras Empilhadas)
+  const tipoXUnidadeData = useMemo(() => {
+    const map: Record<string, { unidade: string; inversao: number; avaria: number; falta: number }> = {};
+    protocolosFiltrados.forEach(p => {
+      const unidade = p.unidadeNome || 'Sem Unidade';
+      if (!map[unidade]) map[unidade] = { unidade, inversao: 0, avaria: 0, falta: 0 };
+      if (p.tipoReposicao === 'INVERSAO') map[unidade].inversao++;
+      else if (p.tipoReposicao === 'AVARIA') map[unidade].avaria++;
+      else if (p.tipoReposicao === 'FALTA') map[unidade].falta++;
+    });
+    return Object.values(map).sort((a, b) => (b.inversao + b.avaria + b.falta) - (a.inversao + a.avaria + a.falta));
+  }, [protocolosFiltrados]);
 
+  // 2. Motorista × Tipo de Reposição (Top 10)
+  const motoristaXTipoData = useMemo(() => {
+    const map: Record<string, { motorista: string; inversao: number; avaria: number; falta: number }> = {};
+    protocolosFiltrados.forEach(p => {
+      const nome = p.motorista.nome;
+      if (!map[nome]) map[nome] = { motorista: nome, inversao: 0, avaria: 0, falta: 0 };
+      if (p.tipoReposicao === 'INVERSAO') map[nome].inversao++;
+      else if (p.tipoReposicao === 'AVARIA') map[nome].avaria++;
+      else if (p.tipoReposicao === 'FALTA') map[nome].falta++;
+    });
+    return Object.values(map)
+      .sort((a, b) => (b.inversao + b.avaria + b.falta) - (a.inversao + a.avaria + a.falta))
+      .slice(0, 10);
+  }, [protocolosFiltrados]);
+
+  // 3. PDV × Frequência (Top 10 - Barras Horizontais)
+  const pdvFrequenciaData = useMemo(() => {
+    const map: Record<string, { codigo: string; nome: string; inversao: number; avaria: number; falta: number }> = {};
+    protocolosFiltrados.forEach(p => {
+      const cod = p.codigoPdv || 'Sem PDV';
+      if (!map[cod]) map[cod] = { codigo: cod, nome: pdvNamesMap[cod] || cod, inversao: 0, avaria: 0, falta: 0 };
+      if (p.tipoReposicao === 'INVERSAO') map[cod].inversao++;
+      else if (p.tipoReposicao === 'AVARIA') map[cod].avaria++;
+      else if (p.tipoReposicao === 'FALTA') map[cod].falta++;
+    });
+    return Object.values(map)
+      .sort((a, b) => (b.inversao + b.avaria + b.falta) - (a.inversao + a.avaria + a.falta))
+      .slice(0, 10);
+  }, [protocolosFiltrados, pdvNamesMap]);
+
+  // 4. Taxa de Resolução por Período (Linha Dupla - últimos 6 meses)
+  const taxaResolucaoData = useMemo(() => {
+    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const today = new Date();
+    const result = [];
+    for (let i = 5; i >= 0; i--) {
+      const monthDate = subMonths(today, i);
+      const mStart = startOfMonth(monthDate);
+      const mEnd = endOfMonth(monthDate);
+      const label = monthNames[monthDate.getMonth()];
+      
+      const abertos = protocolosFiltrados.filter(p => {
+        try {
+          const d = parseFlexDate(p.data);
+          return d >= mStart && d <= mEnd;
+        } catch { return false; }
+      }).length;
+      
+      const encerrados = protocolosFiltrados.filter(p => {
+        if (p.status !== 'encerrado') return false;
+        const logEnc = safeObsLog(p.observacoesLog).find(l => l.acao?.startsWith('Encerrou o protocolo'));
+        if (!logEnc?.data) return false;
+        try {
+          const d = parseFlexDate(logEnc.data);
+          return d >= mStart && d <= mEnd;
+        } catch { return false; }
+      }).length;
+      
+      result.push({ name: label, abertos, encerrados });
+    }
+    return result;
+  }, [protocolosFiltrados]);
 
 
   // Contagem por tipo de reposição
@@ -1084,6 +1163,76 @@ export default function Dashboard() {
                 )}
               />
             </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Gráficos de Cruzamento */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* 1. Tipo de Reposição × Unidade */}
+        <div className="card-stats animate-slide-up" style={{ animationDelay: '1050ms' }}>
+          <h3 className="font-heading text-base font-semibold mb-4">Tipo de Reposição por Unidade</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={tipoXUnidadeData} margin={{ top: 20, right: 12, left: -8, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="unidade" stroke="hsl(var(--muted-foreground))" fontSize={10} />
+              <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} fontSize={11} />
+              <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '11px' }} />
+              <Legend wrapperStyle={{ paddingTop: '10px' }} formatter={(value) => <span className="text-xs text-muted-foreground capitalize">{value}</span>} />
+              <Bar dataKey="inversao" name="Inversão" stackId="a" fill="hsl(199, 89%, 48%)" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="avaria" name="Avaria" stackId="a" fill="hsl(38, 92%, 50%)" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="falta" name="Falta" stackId="a" fill="hsl(160, 84%, 39%)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* 2. Motorista × Tipo de Reposição */}
+        <div className="card-stats animate-slide-up" style={{ animationDelay: '1100ms' }}>
+          <h3 className="font-heading text-base font-semibold mb-4">Top 10 Motoristas por Tipo</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={motoristaXTipoData} margin={{ top: 20, right: 12, left: -8, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="motorista" stroke="hsl(var(--muted-foreground))" fontSize={9} angle={-20} textAnchor="end" height={50} />
+              <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} fontSize={11} />
+              <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '11px' }} />
+              <Legend wrapperStyle={{ paddingTop: '10px' }} formatter={(value) => <span className="text-xs text-muted-foreground capitalize">{value}</span>} />
+              <Bar dataKey="inversao" name="Inversão" fill="hsl(199, 89%, 48%)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="avaria" name="Avaria" fill="hsl(38, 92%, 50%)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="falta" name="Falta" fill="hsl(160, 84%, 39%)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* 3. PDV × Frequência */}
+        <div className="card-stats animate-slide-up" style={{ animationDelay: '1150ms' }}>
+          <h3 className="font-heading text-base font-semibold mb-4">Top 10 PDVs com Mais Ocorrências</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={pdvFrequenciaData} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis type="number" stroke="hsl(var(--muted-foreground))" allowDecimals={false} fontSize={11} />
+              <YAxis type="category" dataKey="nome" stroke="hsl(var(--muted-foreground))" fontSize={9} width={100} />
+              <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '11px' }} />
+              <Legend wrapperStyle={{ paddingTop: '10px' }} formatter={(value) => <span className="text-xs text-muted-foreground capitalize">{value}</span>} />
+              <Bar dataKey="inversao" name="Inversão" stackId="a" fill="hsl(199, 89%, 48%)" />
+              <Bar dataKey="avaria" name="Avaria" stackId="a" fill="hsl(38, 92%, 50%)" />
+              <Bar dataKey="falta" name="Falta" stackId="a" fill="hsl(160, 84%, 39%)" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* 4. Taxa de Resolução por Período */}
+        <div className="card-stats animate-slide-up" style={{ animationDelay: '1200ms' }}>
+          <h3 className="font-heading text-base font-semibold mb-4">Taxa de Resolução (Últimos 6 Meses)</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={taxaResolucaoData} margin={{ top: 20, right: 12, left: -8, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+              <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} fontSize={11} />
+              <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '11px' }} />
+              <Legend wrapperStyle={{ paddingTop: '10px' }} formatter={(value) => <span className="text-xs text-muted-foreground capitalize">{value}</span>} />
+              <Line type="monotone" dataKey="abertos" name="Abertos" stroke="hsl(38, 92%, 50%)" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+              <Line type="monotone" dataKey="encerrados" name="Encerrados" stroke="hsl(160, 84%, 39%)" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+            </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
