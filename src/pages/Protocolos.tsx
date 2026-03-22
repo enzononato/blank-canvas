@@ -541,7 +541,7 @@ export default function Protocolos() {
       </div>
 
       {/* Status Tabs - SEM "Todos" */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="bg-transparent gap-1.5 h-auto p-0">
           <TabsTrigger 
             value="aberto" 
