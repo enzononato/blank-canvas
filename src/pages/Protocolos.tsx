@@ -34,6 +34,13 @@ import { useUnidadesDB } from '@/hooks/useUnidadesDB';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import CreateProtocoloModal from '@/components/CreateProtocoloModal';
 
+// Helper to parse dates in both dd/MM/yyyy and yyyy-MM-dd formats
+const parseFlexDate = (dateStr: string): Date => {
+  return dateStr.includes('-') 
+    ? parse(dateStr, 'yyyy-MM-dd', new Date()) 
+    : parse(dateStr, 'dd/MM/yyyy', new Date());
+};
+
 // Função para extrair log de encerramento do histórico
 const getLogEncerramentoFromLog = (observacoesLog?: ObservacaoLog[]): ObservacaoLog | null => {
   if (!Array.isArray(observacoesLog)) return null;
@@ -48,27 +55,20 @@ const getDataEncerramentoFromLog = (observacoesLog?: ObservacaoLog[]): string | 
 
 const calcularSlaDias = (dataStr: string, status?: string, observacoesLog?: ObservacaoLog[]): number => {
   try {
-    // Suporta dd/MM/yyyy e yyyy-MM-dd
-    const dataProtocolo = dataStr.includes('-') 
-      ? parse(dataStr, 'yyyy-MM-dd', new Date()) 
-      : parse(dataStr, 'dd/MM/yyyy', new Date());
+    const dataProtocolo = parseFlexDate(dataStr);
     if (isNaN(dataProtocolo.getTime())) return 0;
     
-    // Se encerrado, calcular até a data de encerramento
     if (status === 'encerrado') {
       const dataEncerramentoStr = getDataEncerramentoFromLog(observacoesLog);
       if (dataEncerramentoStr) {
-        const dataEncerramento = dataEncerramentoStr.includes('-')
-          ? parse(dataEncerramentoStr, 'yyyy-MM-dd', new Date())
-          : parse(dataEncerramentoStr, 'dd/MM/yyyy', new Date());
+        const dataEncerramento = parseFlexDate(dataEncerramentoStr);
         if (!isNaN(dataEncerramento.getTime())) {
           return differenceInDays(dataEncerramento, dataProtocolo);
         }
       }
     }
     
-    const hoje = new Date();
-    return differenceInDays(hoje, dataProtocolo);
+    return differenceInDays(new Date(), dataProtocolo);
   } catch {
     return 0;
   }
