@@ -198,7 +198,7 @@ export function PosRota({ motorista }: PosRotaProps) {
 
       const { error } = await supabase.from('protocolos').insert({
         numero,
-        data: format(agora, 'yyyy-MM-dd'),
+        data: format(agora, 'dd/MM/yyyy'),
         hora: format(agora, 'HH:mm'),
         status: 'aberto',
         tipo_reposicao: 'pos_rota',

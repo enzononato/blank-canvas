@@ -93,7 +93,6 @@ const HISTORICO_MOTORISTA_ACOES = [
 
 const getHistoricoMotorista = (observacoesLog?: unknown, status?: ProtocoloSimples['status']) => {
   const logs = normalizarObservacoesLog(observacoesLog);
-  if (!Array.isArray(logs)) return [];
 
   return logs.filter((log) => {
     if (status === 'encerrado') return false;
