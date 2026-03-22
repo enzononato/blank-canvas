@@ -459,8 +459,83 @@ export default function Dashboard() {
       .slice(0, 5);
   }, [protocolosFiltrados]);
 
+  // ===== NOVOS GRÁFICOS DE CRUZAMENTO =====
 
+  // 1. Tipo de Reposição × Unidade (Barras Empilhadas)
+  const tipoXUnidadeData = useMemo(() => {
+    const map: Record<string, { unidade: string; inversao: number; avaria: number; falta: number }> = {};
+    protocolosFiltrados.forEach(p => {
+      const unidade = p.unidadeNome || 'Sem Unidade';
+      if (!map[unidade]) map[unidade] = { unidade, inversao: 0, avaria: 0, falta: 0 };
+      if (p.tipoReposicao === 'INVERSAO') map[unidade].inversao++;
+      else if (p.tipoReposicao === 'AVARIA') map[unidade].avaria++;
+      else if (p.tipoReposicao === 'FALTA') map[unidade].falta++;
+    });
+    return Object.values(map).sort((a, b) => (b.inversao + b.avaria + b.falta) - (a.inversao + a.avaria + a.falta));
+  }, [protocolosFiltrados]);
 
+  // 2. Motorista × Tipo de Reposição (Top 10)
+  const motoristaXTipoData = useMemo(() => {
+    const map: Record<string, { motorista: string; inversao: number; avaria: number; falta: number }> = {};
+    protocolosFiltrados.forEach(p => {
+      const nome = p.motorista.nome;
+      if (!map[nome]) map[nome] = { motorista: nome, inversao: 0, avaria: 0, falta: 0 };
+      if (p.tipoReposicao === 'INVERSAO') map[nome].inversao++;
+      else if (p.tipoReposicao === 'AVARIA') map[nome].avaria++;
+      else if (p.tipoReposicao === 'FALTA') map[nome].falta++;
+    });
+    return Object.values(map)
+      .sort((a, b) => (b.inversao + b.avaria + b.falta) - (a.inversao + a.avaria + a.falta))
+      .slice(0, 10);
+  }, [protocolosFiltrados]);
+
+  // 3. PDV × Frequência (Top 10 - Barras Horizontais)
+  const pdvFrequenciaData = useMemo(() => {
+    const map: Record<string, { codigo: string; nome: string; inversao: number; avaria: number; falta: number }> = {};
+    protocolosFiltrados.forEach(p => {
+      const cod = p.codigoPdv || 'Sem PDV';
+      if (!map[cod]) map[cod] = { codigo: cod, nome: pdvNamesMap[cod] || cod, inversao: 0, avaria: 0, falta: 0 };
+      if (p.tipoReposicao === 'INVERSAO') map[cod].inversao++;
+      else if (p.tipoReposicao === 'AVARIA') map[cod].avaria++;
+      else if (p.tipoReposicao === 'FALTA') map[cod].falta++;
+    });
+    return Object.values(map)
+      .sort((a, b) => (b.inversao + b.avaria + b.falta) - (a.inversao + a.avaria + a.falta))
+      .slice(0, 10);
+  }, [protocolosFiltrados, pdvNamesMap]);
+
+  // 4. Taxa de Resolução por Período (Linha Dupla - últimos 6 meses)
+  const taxaResolucaoData = useMemo(() => {
+    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const today = new Date();
+    const result = [];
+    for (let i = 5; i >= 0; i--) {
+      const monthDate = subMonths(today, i);
+      const mStart = startOfMonth(monthDate);
+      const mEnd = endOfMonth(monthDate);
+      const label = monthNames[monthDate.getMonth()];
+      
+      const abertos = protocolosFiltrados.filter(p => {
+        try {
+          const d = parseFlexDate(p.data);
+          return d >= mStart && d <= mEnd;
+        } catch { return false; }
+      }).length;
+      
+      const encerrados = protocolosFiltrados.filter(p => {
+        if (p.status !== 'encerrado') return false;
+        const logEnc = safeObsLog(p.observacoesLog).find(l => l.acao?.startsWith('Encerrou o protocolo'));
+        if (!logEnc?.data) return false;
+        try {
+          const d = parseFlexDate(logEnc.data);
+          return d >= mStart && d <= mEnd;
+        } catch { return false; }
+      }).length;
+      
+      result.push({ name: label, abertos, encerrados });
+    }
+    return result;
+  }, [protocolosFiltrados]);
 
 
   // Contagem por tipo de reposição
