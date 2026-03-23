@@ -29,27 +29,31 @@ Deno.serve(async (req) => {
     const identificadorLimpo = identificador.replace(/[.\-]/g, '').trim()
     const UNIDADE_PETROLINA = 'Revalle Petrolina'
 
-    // Try CPF first (non-Petrolina units)
-    const { data: porCpf, error: cpfError } = await supabaseAdmin
+    // Step 1: Try CPF lookup (ALL units)
+    const { data: cpfResults, error: cpfError } = await supabaseAdmin
       .from('motoristas')
       .select('*')
       .eq('cpf', identificadorLimpo)
-      .neq('unidade', UNIDADE_PETROLINA)
-      .maybeSingle()
+
+    console.log(`[LOGIN] CPF lookup for "${identificadorLimpo}": found=${cpfResults?.length ?? 0}, error=${cpfError?.message ?? 'none'}`)
 
     if (cpfError) {
-      // Log failed attempt
       await supabaseAdmin.from('motorista_login_logs').insert({
         identificador: identificadorLimpo,
         identificador_tipo: 'cpf',
         sucesso: false,
-        erro: `Erro na busca: ${cpfError.message}`,
+        erro: `Erro na busca CPF: ${cpfError.message}`,
       })
       return new Response(
         JSON.stringify({ error: 'Erro ao buscar motorista. Contate o suporte.' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       )
     }
+
+    // If CPF found (prefer non-Petrolina if multiple matches)
+    const porCpf = cpfResults && cpfResults.length > 0
+      ? cpfResults.find((m: any) => m.unidade !== UNIDADE_PETROLINA) || cpfResults[0]
+      : null
 
     if (porCpf) {
       if (porCpf.senha !== senha) {
@@ -77,7 +81,6 @@ Deno.serve(async (req) => {
         unidade: porCpf.unidade,
       })
 
-      // Return motorista WITHOUT senha
       const { senha: _, cpf: __, ...safeMotorist } = porCpf
       return new Response(
         JSON.stringify({ motorista: safeMotorist }),
@@ -85,13 +88,15 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Try by codigo (Petrolina only)
+    // Step 2: Try by codigo (Petrolina only)
     const { data: porCodigo, error: codError } = await supabaseAdmin
       .from('motoristas')
       .select('*')
       .eq('codigo', identificador)
       .eq('unidade', UNIDADE_PETROLINA)
       .maybeSingle()
+
+    console.log(`[LOGIN] Codigo lookup for "${identificador}": found=${!!porCodigo}, error=${codError?.message ?? 'none'}`)
 
     if (codError || !porCodigo) {
       await supabaseAdmin.from('motorista_login_logs').insert({
