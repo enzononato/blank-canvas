@@ -22,6 +22,7 @@ const dbToMotorista = (db: MotoristaPublicDB): Motorista => ({
   id: db.id,
   nome: db.nome,
   codigo: db.codigo,
+  cpf: db.cpf || undefined,
   dataNascimento: db.data_nascimento || '',
   unidade: db.unidade,
   funcao: db.funcao as FuncaoMotorista,
