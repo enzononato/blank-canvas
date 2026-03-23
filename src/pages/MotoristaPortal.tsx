@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { generateUUID } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -27,7 +27,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Plus, Minus, Trash2, CheckCircle, Camera, Package, X, AlertCircle, Check, CalendarIcon, LogOut, FileText, PlusCircle, Phone, Loader2, MessageCircle, Copy } from 'lucide-react';
+import { Plus, Minus, Trash2, CheckCircle, Camera, Package, X, AlertCircle, Check, CalendarIcon, LogOut, FileText, PlusCircle, Phone, Loader2, MessageCircle, Copy, Route } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Protocolo, Produto, FotosProtocolo } from '@/types';
 import { format } from 'date-fns';
@@ -36,7 +36,9 @@ import { cn } from '@/lib/utils';
 import { ProdutoAutocomplete } from '@/components/ProdutoAutocomplete';
 import { PdvAutocomplete } from '@/components/PdvAutocomplete';
 import { MeusProtocolos } from '@/components/motorista/MeusProtocolos';
+import { PosRota } from '@/components/motorista/PosRota';
 import { MotoristaHeader } from '@/components/motorista/MotoristaHeader';
+import { DailySummary } from '@/components/motorista/DailySummary';
 import CameraCapture from '@/components/CameraCapture';
 
 interface ProdutoForm {
@@ -794,13 +796,13 @@ export default function MotoristaPortal() {
   };
 
   // Open camera for a specific field
-  const openCamera = useCallback((field: 'fotoMotoristaPdv' | 'fotoLoteProduto' | 'fotoAvaria') => {
+  const openCamera = (field: 'fotoMotoristaPdv' | 'fotoLoteProduto' | 'fotoAvaria') => {
     setCameraTarget(field);
     setCameraOpen(true);
-  }, []);
+  };
 
   // Handle camera capture
-  const handleCameraCapture = useCallback(async (imageDataUrl: string) => {
+  const handleCameraCapture = async (imageDataUrl: string) => {
     if (!cameraTarget) return;
     
     setIsCompressing(true);
@@ -836,7 +838,7 @@ export default function MotoristaPortal() {
       setIsCompressing(false);
       setCameraTarget(null);
     }
-  }, [cameraTarget]);
+  };
 
   // Photo upload card component
   const PhotoUploadCard = ({
@@ -1053,7 +1055,7 @@ export default function MotoristaPortal() {
         }
       />
       
-      <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 safe-area-inset">
+      <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 safe-area-inset overflow-x-hidden">
       {/* Header com nome, código e unidade */}
       <MotoristaHeader 
         motorista={motorista}
@@ -1062,43 +1064,62 @@ export default function MotoristaPortal() {
         onLogout={handleLogout}
       />
 
+      {/* Resumo do dia */}
+      <DailySummary motorista={motorista} />
+
       {/* Tabs */}
-      <div className="px-4 pt-4 pb-2 max-w-lg mx-auto">
+      <div className="px-3 pt-2 pb-2 max-w-xl mx-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" data-tour="motorista-tabs">
-          <TabsList className="grid w-full grid-cols-2 h-12 bg-muted/60 p-1 rounded-lg border border-border/50">
-            <TabsTrigger 
-              value="novo" 
-              className="text-sm gap-2 rounded-md border border-transparent data-[state=inactive]:border-border/40 data-[state=inactive]:bg-background/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"
+          {/* Botão Novo protocolo - destaque acima */}
+          <div className="mb-2.5">
+            <button
+              onClick={() => setActiveTab('novo')}
+              className={cn(
+                "w-full h-11 rounded-xl text-[14px] font-semibold flex items-center justify-center gap-2 transition-all duration-200 border",
+                activeTab === 'novo'
+                  ? "bg-primary text-primary-foreground shadow-md border-primary"
+                  : "bg-background text-muted-foreground border-border/40 hover:bg-muted/50"
+              )}
             >
-              <PlusCircle className="w-4 h-4" />
-              Novo Protocolo
-            </TabsTrigger>
+              <PlusCircle className="w-5 h-5 shrink-0" />
+              Novo protocolo
+            </button>
+          </div>
+
+          {/* Tabs Protocolos | Pós-Rota */}
+          <TabsList className="grid w-full grid-cols-2 h-16 bg-muted/50 p-2 rounded-xl border border-border/40 gap-1.5">
             <TabsTrigger 
               value="meus" 
-              className="text-sm gap-2 rounded-md border border-transparent data-[state=inactive]:border-border/40 data-[state=inactive]:bg-background/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"
+              className="text-[14px] font-semibold gap-1.5 rounded-lg min-w-0 px-2 data-[state=inactive]:bg-background/80 data-[state=inactive]:text-muted-foreground data-[state=inactive]:border data-[state=inactive]:border-border/40 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200"
             >
-              <FileText className="w-4 h-4" />
-              Meus Protocolos
+              <FileText className="w-4.5 h-4.5 shrink-0" />
+              <span>Protocolos</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="pos-rota" 
+              className="text-[14px] font-semibold gap-1.5 rounded-lg min-w-0 px-2 data-[state=inactive]:bg-background/80 data-[state=inactive]:text-muted-foreground data-[state=inactive]:border data-[state=inactive]:border-border/40 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200"
+            >
+              <Route className="w-4.5 h-4.5 shrink-0" />
+              <span>Pós-Rota</span>
             </TabsTrigger>
           </TabsList>
 
           {/* Tab: Novo Protocolo */}
-          <TabsContent value="novo" className="mt-4 pb-24 space-y-4" data-tour="motorista-form">
+          <TabsContent value="novo" className="mt-4 pb-4 space-y-4" data-tour="motorista-form">
             {/* Seção: Dados Gerais */}
             <div className="bg-card rounded-xl shadow-sm border border-border/50">
               <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-3 border-b border-border/30">
-                <h3 className="text-base font-medium text-foreground flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <Package className="h-4 w-4 text-primary" />
                   Dados Gerais
                 </h3>
               </div>
               <div className="p-4 space-y-4">
-                {/* General Info */}
                 <div className="space-y-4">
-                  <div className="space-y-2" data-tour="campo-mapa">
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="mapa" className="text-sm font-medium">MAPA *</Label>
-                      {touched.mapa && mapa.trim() && <Check size={14} className="text-green-500" />}
+                  <div className="space-y-1.5" data-tour="campo-mapa">
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="mapa" className="text-sm font-medium">Mapa *</Label>
+                      {touched.mapa && mapa.trim() && <Check size={14} className="text-emerald-500" />}
                     </div>
                     <Input
                       id="mapa"
@@ -1106,21 +1127,21 @@ export default function MotoristaPortal() {
                       onChange={(e) => setMapa(formatOnlyNumbers(e.target.value))}
                       onBlur={() => handleBlur('mapa')}
                       placeholder="Ex: 16431"
-                      className={getInputClassName('mapa', mapa)}
+                      className={cn("h-11 text-sm", getInputClassName('mapa', mapa))}
                       inputMode="numeric"
                       pattern="[0-9]*"
                     />
                     {touched.mapa && !mapa.trim() && (
-                      <p className="text-[10px] text-red-500 flex items-center gap-0.5">
-                        <AlertCircle size={10} />
+                      <p className="text-[11px] text-destructive flex items-center gap-1">
+                        <AlertCircle size={11} />
                         Campo obrigatório
                       </p>
                     )}
                   </div>
                   <div className="space-y-1.5" data-tour="campo-pdv">
                     <div className="flex items-center gap-1.5">
-                      <Label htmlFor="codigoPdv" className="text-xs font-medium">Código PDV *</Label>
-                      {touched.codigoPdv && codigoPdv.trim() && <Check size={12} className="text-green-500" />}
+                      <Label htmlFor="codigoPdv" className="text-sm font-medium">Código PDV *</Label>
+                      {touched.codigoPdv && codigoPdv.trim() && <Check size={14} className="text-emerald-500" />}
                     </div>
                     <PdvAutocomplete
                       value={codigoPdv}
@@ -1134,22 +1155,22 @@ export default function MotoristaPortal() {
                       onBlur={() => handleBlur('codigoPdv')}
                     />
                     {touched.codigoPdv && !codigoPdv.trim() && (
-                      <p className="text-[10px] text-red-500 flex items-center gap-0.5">
-                        <AlertCircle size={10} />
+                      <p className="text-[11px] text-destructive flex items-center gap-1">
+                        <AlertCircle size={11} />
                         Campo obrigatório
                       </p>
                     )}
                     {touched.codigoPdv && codigoPdv.trim() && !pdvSelecionadoDaLista && (
-                      <p className="text-[10px] text-amber-500 flex items-center gap-0.5">
-                        <AlertCircle size={10} />
+                      <p className="text-[11px] text-amber-500 flex items-center gap-1">
+                        <AlertCircle size={11} />
                         Selecione um PDV da lista
                       </p>
                     )}
                   </div>
                   <div className="space-y-1.5" data-tour="campo-nota-fiscal">
                     <div className="flex items-center gap-1.5">
-                      <Label htmlFor="notaFiscal" className="text-xs font-medium">Nota Fiscal *</Label>
-                      {touched.notaFiscal && notaFiscal.trim() && <Check size={12} className="text-green-500" />}
+                      <Label htmlFor="notaFiscal" className="text-sm font-medium">Nota Fiscal *</Label>
+                      {touched.notaFiscal && notaFiscal.trim() && <Check size={14} className="text-emerald-500" />}
                     </div>
                     <Input
                       id="notaFiscal"
@@ -1157,13 +1178,13 @@ export default function MotoristaPortal() {
                       onChange={(e) => setNotaFiscal(formatOnlyNumbers(e.target.value))}
                       onBlur={() => handleBlur('notaFiscal')}
                       placeholder="Ex: 243631"
-                      className={getInputClassName('notaFiscal', notaFiscal)}
+                      className={cn("h-11 text-sm", getInputClassName('notaFiscal', notaFiscal))}
                       inputMode="numeric"
                       pattern="[0-9]*"
                     />
                     {touched.notaFiscal && !notaFiscal.trim() && (
-                      <p className="text-[10px] text-red-500 flex items-center gap-0.5">
-                        <AlertCircle size={10} />
+                      <p className="text-[11px] text-destructive flex items-center gap-1">
+                        <AlertCircle size={11} />
                         Campo obrigatório
                       </p>
                     )}
@@ -1174,27 +1195,27 @@ export default function MotoristaPortal() {
 
             {/* Seção: Tipo e Causa */}
             <div className="bg-card rounded-xl shadow-sm border border-border/50 overflow-hidden">
-              <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-3 py-2 border-b border-border/30">
-                <h3 className="text-sm font-medium text-foreground flex items-center gap-1.5">
-                  <AlertCircle className="h-3.5 w-3.5 text-primary" />
+              <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-3 border-b border-border/30">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-primary" />
                   Tipo e Causa
                 </h3>
               </div>
-              <div className="p-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" data-tour="campo-tipo-reposicao">
+              <div className="p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" data-tour="campo-tipo-reposicao">
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-1.5">
-                      <Label className="text-xs font-medium">Tipo *</Label>
-                      {touched.tipoReposicao && tipoReposicao && <Check size={12} className="text-green-500" />}
+                      <Label className="text-sm font-medium">Tipo *</Label>
+                      {touched.tipoReposicao && tipoReposicao && <Check size={14} className="text-emerald-500" />}
                     </div>
                     <Select 
                       value={tipoReposicao} 
                       onValueChange={handleTipoReposicaoChange}
                     >
                       <SelectTrigger className={cn(
-                        "h-10 text-sm",
-                        touched.tipoReposicao && tipoReposicao && 'border-green-500 focus:ring-green-500',
-                        touched.tipoReposicao && !tipoReposicao && 'border-red-500 focus:ring-red-500'
+                        "h-11 text-sm",
+                        touched.tipoReposicao && tipoReposicao && 'border-emerald-500 focus:ring-emerald-500',
+                        touched.tipoReposicao && !tipoReposicao && 'border-destructive focus:ring-destructive'
                       )}>
                         <SelectValue placeholder="Selecione" />
                       </SelectTrigger>
@@ -1205,8 +1226,8 @@ export default function MotoristaPortal() {
                       </SelectContent>
                     </Select>
                     {touched.tipoReposicao && !tipoReposicao && (
-                      <p className="text-[10px] text-red-500 flex items-center gap-0.5">
-                        <AlertCircle size={10} />
+                      <p className="text-[11px] text-destructive flex items-center gap-1">
+                        <AlertCircle size={11} />
                         Selecione
                       </p>
                     )}
@@ -1214,8 +1235,8 @@ export default function MotoristaPortal() {
 
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-1.5">
-                      <Label className="text-xs font-medium">Causa *</Label>
-                      {touched.causa && causa && <Check size={12} className="text-green-500" />}
+                      <Label className="text-sm font-medium">Causa *</Label>
+                      {touched.causa && causa && <Check size={14} className="text-emerald-500" />}
                     </div>
                     <Select 
                       value={causa} 
@@ -1226,9 +1247,9 @@ export default function MotoristaPortal() {
                       disabled={!tipoReposicao}
                     >
                       <SelectTrigger className={cn(
-                        "h-10 text-sm",
-                        touched.causa && causa && 'border-green-500 focus:ring-green-500',
-                        touched.causa && !causa && tipoReposicao && 'border-red-500 focus:ring-red-500'
+                        "h-11 text-sm",
+                        touched.causa && causa && 'border-emerald-500 focus:ring-emerald-500',
+                        touched.causa && !causa && tipoReposicao && 'border-destructive focus:ring-destructive'
                       )}>
                         <SelectValue placeholder={tipoReposicao ? "Selecione" : "Escolha o tipo"} />
                       </SelectTrigger>
@@ -1239,8 +1260,8 @@ export default function MotoristaPortal() {
                       </SelectContent>
                     </Select>
                     {touched.causa && !causa && tipoReposicao && (
-                      <p className="text-[10px] text-red-500 flex items-center gap-0.5">
-                        <AlertCircle size={10} />
+                      <p className="text-[11px] text-destructive flex items-center gap-1">
+                        <AlertCircle size={11} />
                         Selecione
                       </p>
                     )}
@@ -1251,22 +1272,22 @@ export default function MotoristaPortal() {
 
             {/* Seção: Produtos */}
             <div className="bg-card rounded-xl shadow-sm border border-border/50" data-tour="secao-produtos">
-              <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-3 py-2 border-b border-border/30 flex items-center justify-between">
-                <h3 className="text-sm font-medium text-foreground flex items-center gap-1.5">
-                  <Package className="h-3.5 w-3.5 text-primary" />
+              <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-3 border-b border-border/30 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Package className="h-4 w-4 text-primary" />
                   Produtos
                   {tipoReposicao === 'inversao' && (
-                    <span className="text-[10px] text-muted-foreground font-normal ml-0.5">(apenas 1)</span>
+                    <span className="text-[11px] text-muted-foreground font-normal ml-0.5">(apenas 1)</span>
                   )}
                 </h3>
                 {podeAdicionarMultiplos && (
-                  <Button type="button" variant="ghost" size="sm" onClick={addProduto} className="h-7 text-xs text-primary hover:text-primary hover:bg-primary/10">
-                    <Plus className="mr-0.5 h-3.5 w-3.5" />
+                  <Button type="button" variant="ghost" size="sm" onClick={addProduto} className="h-8 text-xs text-primary hover:text-primary hover:bg-primary/10">
+                    <Plus className="mr-0.5 h-4 w-4" />
                     Adicionar
                   </Button>
                 )}
               </div>
-              <div className="p-3 space-y-2">
+              <div className="p-4 space-y-3">
                   
                   {produtos.map((produto, index) => {
                     const isTouched = touched.produtos[index];
@@ -1284,8 +1305,8 @@ export default function MotoristaPortal() {
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-medium text-foreground">Produto {index + 1}</span>
-                            {isTouched && isValid && <Check size={12} className="text-green-500" />}
+                            <span className="text-sm font-medium text-foreground">Produto {index + 1}</span>
+                            {isTouched && isValid && <Check size={14} className="text-emerald-500" />}
                           </div>
                           {produtos.length > 1 && (
                             <Button
@@ -1300,8 +1321,8 @@ export default function MotoristaPortal() {
                           )}
                         </div>
                         <div className="space-y-2">
-                          <div className="space-y-1">
-                            <Label className="text-[10px] font-medium text-muted-foreground">Produto *</Label>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-medium text-muted-foreground">Produto *</Label>
                             <ProdutoAutocomplete
                               value={produto.produto}
                               onChange={(value, embalagem) => {
@@ -1321,8 +1342,8 @@ export default function MotoristaPortal() {
                             )}
                           </div>
                           <div className="grid grid-cols-[auto_60px_1fr] gap-1.5">
-                            <div className="space-y-1">
-                              <Label className="text-[10px] font-medium text-muted-foreground">Qtd</Label>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-medium text-muted-foreground">Qtd</Label>
                               <div className="flex items-center gap-1">
                                 <Button
                                   type="button"
@@ -1362,8 +1383,8 @@ export default function MotoristaPortal() {
                                 </Button>
                               </div>
                             </div>
-                            <div className="space-y-1">
-                              <Label className="text-[10px] font-medium text-muted-foreground">Und</Label>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-medium text-muted-foreground">Und</Label>
                               <Select
                                 value={produto.unidade}
                                 onValueChange={(value) => updateProduto(index, 'unidade', value)}
@@ -1393,14 +1414,14 @@ export default function MotoristaPortal() {
 
             {/* Seção: Fotos */}
             <div className="bg-card rounded-xl shadow-sm border border-border/50 overflow-hidden" data-tour="secao-fotos">
-              <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-3 py-2 border-b border-border/30">
-                <h3 className="text-sm font-medium text-foreground flex items-center gap-1.5">
-                  <Camera className="h-3.5 w-3.5 text-primary" />
+              <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-3 border-b border-border/30">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Camera className="h-4 w-4 text-primary" />
                   Fotos
-                  <span className="text-[10px] text-destructive font-normal">*</span>
+                  <span className="text-[11px] text-destructive font-normal">*</span>
                 </h3>
               </div>
-              <div className="p-3">
+              <div className="p-4">
                 {tipoReposicao ? (
                   <div className="space-y-2">
                     
@@ -1442,15 +1463,15 @@ export default function MotoristaPortal() {
 
             {/* Seção: Contato */}
             <div className="bg-card rounded-xl shadow-sm border border-border/50 overflow-hidden">
-              <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-3 py-2 border-b border-border/30">
-                <h3 className="text-sm font-medium text-foreground flex items-center gap-1.5">
-                  <Phone className="h-3.5 w-3.5 text-primary" />
+              <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-3 border-b border-border/30">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-primary" />
                   Contato
                 </h3>
               </div>
-              <div className="p-3 space-y-2">
-                    <div className="space-y-1" data-tour="campo-whatsapp">
-                      <Label htmlFor="whatsappContato" className="text-[10px] font-medium text-muted-foreground">
+              <div className="p-4 space-y-4">
+                    <div className="space-y-1.5" data-tour="campo-whatsapp">
+                      <Label htmlFor="whatsappContato" className="text-sm font-medium">
                         WhatsApp *
                       </Label>
                       <Input
@@ -1461,22 +1482,22 @@ export default function MotoristaPortal() {
                         placeholder="(00) 00000-0000"
                         maxLength={16}
                         className={cn(
-                          "h-9 text-sm",
-                          touched.whatsappContato && validateWhatsApp(whatsappContato) && 'border-green-500',
-                          touched.whatsappContato && !validateWhatsApp(whatsappContato) && 'border-red-500'
+                          "h-11 text-sm",
+                          touched.whatsappContato && validateWhatsApp(whatsappContato) && 'border-emerald-500',
+                          touched.whatsappContato && !validateWhatsApp(whatsappContato) && 'border-destructive'
                         )}
                         inputMode="tel"
                       />
                       {touched.whatsappContato && !validateWhatsApp(whatsappContato) && (
-                        <p className="text-[10px] text-red-500 flex items-center gap-0.5">
-                          <AlertCircle size={10} />
+                        <p className="text-[11px] text-destructive flex items-center gap-1">
+                          <AlertCircle size={11} />
                           WhatsApp inválido
                         </p>
                       )}
                     </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="emailContato" className="text-[10px] font-medium text-muted-foreground">
-                        E-mail (opcional)
+                    <div className="space-y-1.5">
+                      <Label htmlFor="emailContato" className="text-sm font-medium">
+                        E-mail <span className="text-muted-foreground font-normal">(opcional)</span>
                       </Label>
                       <Input
                         id="emailContato"
@@ -1485,15 +1506,15 @@ export default function MotoristaPortal() {
                         onChange={(e) => setEmailContato(e.target.value)}
                         placeholder="email@exemplo.com"
                         className={cn(
-                          "h-9 text-sm",
-                          emailContato.trim() && validateEmail(emailContato) && 'border-green-500',
-                          emailContato.trim() && !validateEmail(emailContato) && 'border-red-500'
+                          "h-11 text-sm",
+                          emailContato.trim() && validateEmail(emailContato) && 'border-emerald-500',
+                          emailContato.trim() && !validateEmail(emailContato) && 'border-destructive'
                         )}
                         inputMode="email"
                       />
                       {emailContato.trim() && !validateEmail(emailContato) && (
-                        <p className="text-[10px] text-red-500 flex items-center gap-0.5">
-                          <AlertCircle size={10} />
+                        <p className="text-[11px] text-destructive flex items-center gap-1">
+                          <AlertCircle size={11} />
                           E-mail inválido
                         </p>
                       )}
@@ -1503,14 +1524,14 @@ export default function MotoristaPortal() {
 
             {/* Seção: Observação */}
             <div className="bg-card rounded-xl shadow-sm border border-border/50 overflow-hidden">
-              <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-3 py-2 border-b border-border/30">
-                <h3 className="text-sm font-medium text-foreground flex items-center gap-1.5">
-                  <FileText className="h-3.5 w-3.5 text-primary" />
+              <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-3 border-b border-border/30">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" />
                   Observação
-                  <span className="text-[10px] text-muted-foreground font-normal">(opcional)</span>
+                  <span className="text-[11px] text-muted-foreground font-normal">(opcional)</span>
                 </h3>
               </div>
-              <div className="p-3">
+              <div className="p-4">
                 <Textarea
                   id="observacao"
                   value={observacao}
@@ -1521,6 +1542,11 @@ export default function MotoristaPortal() {
                 />
               </div>
             </div>
+          </TabsContent>
+
+          {/* Tab: Pós-Rota */}
+          <TabsContent value="pos-rota" className="mt-4 pb-6">
+            <PosRota motorista={motorista} />
           </TabsContent>
 
           {/* Tab: Meus Protocolos */}

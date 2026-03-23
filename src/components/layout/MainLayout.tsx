@@ -1,6 +1,7 @@
 import { Outlet, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Sidebar } from './Sidebar';
 import { ContentHeader } from './ContentHeader';
@@ -8,7 +9,7 @@ import { GuidedTour } from '@/components/GuidedTour';
 import { supabase } from '@/integrations/supabase/client';
 
 export function MainLayout() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -17,7 +18,7 @@ export function MainLayout() {
         queryKey: ['motoristas'],
         queryFn: async () => {
           const { data, error } = await supabase
-            .from('motoristas')
+            .from('motoristas_public' as any)
             .select('*')
             .order('nome', { ascending: true });
           if (error) throw error;
@@ -40,6 +41,14 @@ export function MainLayout() {
       });
     }
   }, [isAuthenticated, queryClient]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="animate-spin text-primary" size={40} />
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;

@@ -85,7 +85,7 @@ function dbToProtocolo(db: ProtocoloDB): Protocolo {
     produtos: db.produtos || [],
     fotosProtocolo: db.fotos_protocolo || undefined,
     observacaoGeral: db.observacao_geral || undefined,
-    observacoesLog: db.observacoes_log || [],
+    observacoesLog: Array.isArray(db.observacoes_log) ? db.observacoes_log as unknown as ObservacaoLog[] : [],
     mensagemEncerramento: db.mensagem_encerramento || undefined,
     arquivoEncerramento: db.arquivo_encerramento || undefined,
     oculto: db.oculto ?? false,
@@ -169,30 +169,47 @@ export function useProtocolosDB() {
 
   const { data: protocolos = [], isLoading, error } = useQuery({
     queryKey: ['protocolos'],
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     queryFn: async () => {
       // Buscar todos os protocolos em páginas de 1000 para contornar o limite do PostgREST
       const PAGE_SIZE = 1000;
-      let allData: ProtocoloDB[] = [];
-      let from = 0;
-      let hasMore = true;
 
-      while (hasMore) {
-        const { data, error } = await supabase
+      const { count, error: countError } = await supabase
+        .from('protocolos')
+        .select('id', { count: 'exact' })
+        .eq('ativo', true)
+        .limit(1);
+
+      if (countError) throw countError;
+
+      const total = count ?? 0;
+      if (total === 0) {
+        return [];
+      }
+
+      const totalPages = Math.ceil(total / PAGE_SIZE);
+      const pageRequests = Array.from({ length: totalPages }, (_, pageIndex) => {
+        const from = pageIndex * PAGE_SIZE;
+        const to = from + PAGE_SIZE - 1;
+
+        return supabase
           .from('protocolos')
           .select('*')
           .eq('ativo', true)
           .order('created_at', { ascending: false })
-          .range(from, from + PAGE_SIZE - 1);
+          .range(from, to);
+      });
 
+      const responses = await Promise.all(pageRequests);
+      const allData: ProtocoloDB[] = [];
+
+      for (const { data, error } of responses) {
         if (error) throw error;
-        
-        const rows = (data || []) as unknown as ProtocoloDB[];
-        allData = [...allData, ...rows];
-        
-        if (rows.length < PAGE_SIZE) {
-          hasMore = false;
-        } else {
-          from += PAGE_SIZE;
+        if (data?.length) {
+          allData.push(...(data as unknown as ProtocoloDB[]));
         }
       }
 

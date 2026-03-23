@@ -47,6 +47,7 @@ interface BuscarProtocoloPdvProps {
   onSelectProtocolo?: (protocolo: ProtocoloEncontrado) => void;
   motorista: Motorista;
   selectionMode?: 'select' | 'view';
+  statusFilter?: 'aberto' | 'em_andamento';
 }
 
 export function BuscarProtocoloPdv({
@@ -55,6 +56,7 @@ export function BuscarProtocoloPdv({
   onSelectProtocolo,
   motorista,
   selectionMode = 'select',
+  statusFilter = 'em_andamento',
 }: BuscarProtocoloPdvProps) {
   const [codigoPdv, setCodigoPdv] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -73,7 +75,7 @@ export function BuscarProtocoloPdv({
       const { data, error } = await supabase
         .from('protocolos')
         .select('id, numero, data, hora, status, tipo_reposicao, causa, codigo_pdv, nota_fiscal, motorista_nome, motorista_codigo, motorista_whatsapp, motorista_email, motorista_unidade, produtos, observacao_geral, contato_whatsapp, contato_email, cliente_telefone, fotos_protocolo, observacoes_log, mapa')
-        .eq('status', 'em_andamento')
+        .eq('status', statusFilter)
         .eq('ativo', true)
         .ilike('codigo_pdv', `%${codigoPdv.trim()}%`)
         .or('oculto.is.null,oculto.eq.false')
@@ -82,7 +84,15 @@ export function BuscarProtocoloPdv({
 
       if (error) throw error;
 
-      setResultados((data || []) as ProtocoloEncontrado[]);
+      const results = (data || []) as ProtocoloEncontrado[];
+      setResultados(results);
+      // Auto-expandir se houver apenas 1 resultado
+      if (results.length === 1) {
+        setProtocoloExpandidoId(results[0].id);
+      } else if (results.length > 1) {
+        // Expandir todos automaticamente - usar o primeiro como referência
+        setProtocoloExpandidoId('__all__');
+      }
     } catch (err) {
       console.error('Erro ao buscar protocolos:', err);
       setResultados([]);
@@ -129,9 +139,9 @@ export function BuscarProtocoloPdv({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-hidden flex flex-col p-4 sm:p-6 rounded-xl">
+        <DialogHeader className="pb-1">
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Search className="w-5 h-5 text-primary" />
             {selectionMode === 'view' ? 'Consultar Reposição do PDV' : 'Buscar Reposição por PDV'}
           </DialogTitle>
@@ -143,10 +153,10 @@ export function BuscarProtocoloPdv({
             value={codigoPdv}
             onChange={(e) => setCodigoPdv(e.target.value)}
             onKeyPress={handleKeyPress}
-            className="flex-1"
+            className="flex-1 h-11 text-base"
             autoFocus
           />
-          <Button onClick={handleBuscar} disabled={isSearching || !codigoPdv.trim()}>
+          <Button onClick={handleBuscar} disabled={isSearching || !codigoPdv.trim()} className="h-11 w-11 shrink-0">
             {isSearching ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
@@ -155,7 +165,7 @@ export function BuscarProtocoloPdv({
           </Button>
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-2 mt-2">
+        <div className="flex-1 overflow-y-auto space-y-3 mt-2 -mx-1 px-1">
           {isSearching && (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -165,114 +175,77 @@ export function BuscarProtocoloPdv({
           {!isSearching && buscaRealizada && resultados.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
               <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Nenhum protocolo em atendimento encontrado</p>
+              <p className="text-sm">Nenhum protocolo {statusFilter === 'aberto' ? 'aberto' : 'em atendimento'} encontrado</p>
               <p className="text-xs mt-1">para o PDV "{codigoPdv}"</p>
             </div>
           )}
 
           {!isSearching && resultados.map((protocolo) => {
             const produtos = Array.isArray(protocolo.produtos) ? protocolo.produtos as Produto[] : [];
-            const isExpanded = protocoloExpandidoId === protocolo.id;
+            const isExpanded = protocoloExpandidoId === protocolo.id || protocoloExpandidoId === '__all__';
 
             return (
-              <Card
+              <div
                 key={protocolo.id}
-                className="cursor-pointer hover:shadow-md hover:border-primary/50 transition-all"
+                className="rounded-lg border border-border/60 bg-card p-2.5 cursor-pointer hover:border-primary/40 hover:shadow-sm transition-all"
                 onClick={() => handleSelectProtocolo(protocolo)}
               >
-                <CardContent className="p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <FileText className="w-4 h-4 text-primary shrink-0" />
-                        <span className="font-mono text-sm font-medium truncate">
-                          {protocolo.numero}
-                        </span>
-                      </div>
-                      <div className="text-xs text-muted-foreground space-y-0.5">
-                        <p>PDV: <span className="font-medium text-foreground">{protocolo.codigo_pdv}</span></p>
-                        <p>{formatDate(protocolo.data)} às {protocolo.hora}</p>
-                        <p>Motorista: {protocolo.motorista_nome}</p>
-                        {protocolo.tipo_reposicao && (
-                          <p className="capitalize">{protocolo.tipo_reposicao.toLowerCase()}</p>
-                        )}
-                      </div>
-                      {protocolo.observacao_geral && (
-                        <div className="mt-2 pt-2 border-t border-border/50">
-                          <div className="flex items-start gap-1 text-xs">
-                            <MessageSquare className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />
-                            <p className={selectionMode === 'view' && !isExpanded ? 'text-foreground line-clamp-2' : 'text-foreground line-clamp-3'}>{protocolo.observacao_geral}</p>
-                          </div>
-                        </div>
-                      )}
-                      {produtos.length > 0 && (
-                        <div className="mt-2 pt-2 border-t border-border/50">
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-                            <Package className="w-3 h-3" />
-                            <span className="font-medium">{produtos.length} produto{produtos.length > 1 ? 's' : ''}:</span>
-                          </div>
-                          <ul className="text-xs text-foreground space-y-0.5 ml-4">
-                            {(selectionMode === 'view' && !isExpanded ? produtos.slice(0, 2) : produtos.slice(0, 5)).map((produto, idx) => (
-                              <li key={idx} className="flex items-center gap-1">
-                                <span className="truncate">• {produto.nome}</span>
-                                <span className="font-medium text-primary shrink-0">({produto.quantidade || 1} {produto.unidade || 'un'})</span>
-                              </li>
-                            ))}
-                            {((selectionMode === 'view' && !isExpanded) ? produtos.length > 2 : produtos.length > 5) && (
-                              <li className="text-muted-foreground italic">
-                                {selectionMode === 'view' && !isExpanded
-                                  ? `toque para ver mais ${produtos.length - 2} item(ns)`
-                                  : `... e mais ${produtos.length - 5} produto${produtos.length - 5 > 1 ? 's' : ''}`}
-                              </li>
-                            )}
-                          </ul>
-                        </div>
-                      )}
-
-                      {selectionMode === 'view' && isExpanded && (
-                        <div className="mt-2 pt-2 border-t border-border/50 space-y-2 text-xs text-foreground">
-                          {protocolo.nota_fiscal && <p>NF: <span className="font-medium">{protocolo.nota_fiscal}</span></p>}
-                          {protocolo.causa && <p>Causa: <span className="font-medium">{protocolo.causa}</span></p>}
-                          {protocolo.mapa && <p>Mapa: <span className="font-medium">{protocolo.mapa}</span></p>}
-                          <Button
-                            className="w-full mt-2 flex items-center justify-center gap-2"
-                            size="sm"
-                            onClick={(e) => handleConfirmSelect(e, protocolo)}
-                          >
-                            <CheckCircle2 className="h-4 w-4" />
-                            Encerrar Reposição
-                          </Button>
-                        </div>
-                      )}
-
-                      {selectionMode === 'select' && isExpanded && (
-                        <div className="mt-2 pt-2 border-t border-border/50 space-y-2 text-xs text-foreground">
-                          {protocolo.nota_fiscal && <p>NF: <span className="font-medium">{protocolo.nota_fiscal}</span></p>}
-                          {protocolo.causa && <p>Causa: <span className="font-medium">{protocolo.causa}</span></p>}
-                          {protocolo.mapa && <p>Mapa: <span className="font-medium">{protocolo.mapa}</span></p>}
-                          <Button
-                            className="w-full mt-2 flex items-center justify-center gap-2"
-                            size="sm"
-                            onClick={(e) => handleConfirmSelect(e, protocolo)}
-                          >
-                            <CheckCircle2 className="h-4 w-4" />
-                            Encerrar Reposição
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                    <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30 text-[10px] shrink-0">
-                      Em Atendimento
-                    </Badge>
+                {/* Header */}
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span className="font-mono text-[11px] font-bold truncate">
+                      {protocolo.numero}
+                    </span>
                   </div>
-                </CardContent>
-              </Card>
+                  {statusFilter === 'aberto' ? (
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-600 border border-yellow-500/25">
+                      Aberto
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 border border-blue-500/25">
+                      Em Atendimento
+                    </span>
+                  )}
+                </div>
+
+                {/* Info compacta */}
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground ml-5">
+                  <span>◉ PDV {protocolo.codigo_pdv}</span>
+                  <span>⏱ {formatDate(protocolo.data)} às {protocolo.hora}</span>
+                </div>
+
+                {/* Tags: tipo + mapa */}
+                <div className="flex flex-wrap gap-1.5 mt-1.5 ml-5">
+                  {protocolo.tipo_reposicao && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground capitalize">
+                      {protocolo.tipo_reposicao.toLowerCase()}
+                    </span>
+                  )}
+                  {protocolo.mapa && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                      Mapa {protocolo.mapa}
+                    </span>
+                  )}
+                </div>
+
+                {/* Botão encerrar - apenas para em_andamento */}
+                {selectionMode !== 'view' && (
+                  <Button
+                    className="w-full mt-2.5 h-9 text-xs font-semibold flex items-center justify-center gap-2"
+                    onClick={(e) => handleConfirmSelect(e, protocolo)}
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Encerrar Reposição
+                  </Button>
+                )}
+              </div>
             );
           })}
         </div>
 
-        <div className="pt-2 border-t">
-          <Button variant="outline" onClick={handleClose} className="w-full">
+        <div className="pt-3 border-t">
+          <Button variant="outline" onClick={handleClose} className="w-full h-11">
             Cancelar
           </Button>
         </div>

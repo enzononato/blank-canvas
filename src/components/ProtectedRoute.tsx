@@ -23,7 +23,16 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to="/login" replace />;
   }
 
-  if (!user || !allowedRoles.includes(user.nivel)) {
+  // User profile still loading (session exists but profile not yet fetched)
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="animate-spin text-primary" size={48} />
+      </div>
+    );
+  }
+
+  if (!allowedRoles.includes(user.nivel)) {
     return <Navigate to="/dashboard" replace />;
   }
 
