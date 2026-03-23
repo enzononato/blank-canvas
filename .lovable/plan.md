@@ -1,47 +1,36 @@
 
 
-## Plan: Add webhook to Pós-Rota creation
+## Plan: Show friendly error messages on motorista login
 
-### What
-After the pós-rota protocol is inserted into the database (and after the audit log), send a POST to `https://n8n.revalle.com.br/webhook/reposicaowpp` with `tipo: 'pos_rota'`, mirroring the same payload structure used for regular protocol creation.
+### Problem
+When the edge function returns HTTP 401 (wrong password) or 404 (not found), `supabase.functions.invoke` puts the response in the `error` field with a generic message like "Edge function returned 401". The actual JSON body with `"Senha incorreta"` is lost.
+
+### Solution
+Update `MotoristaAuthContext.tsx` login function to parse the error response body and extract the friendly message.
 
 ### Changes
 
-**File: `src/components/motorista/PosRota.tsx`** (single edit, ~lines 259-287)
+**File: `src/contexts/MotoristaAuthContext.tsx`** (~lines 58-64)
 
-After the audit log insert and before `setEnviado(true)`, add a webhook call:
+Replace the error handling block to attempt parsing the error context for the original message:
 
 ```typescript
-// Send webhook to n8n (same endpoint as protocol creation)
-const webhookPayload = {
-  tipo: 'pos_rota',
-  numero,
-  data: format(agora, 'dd/MM/yyyy'),
-  hora: format(agora, 'HH:mm:ss'),
-  mapa: mapa.trim(),
-  codigoPdv: precisaPdv ? codigoPdv.trim() : '',
-  notaFiscal: notaFiscal.trim() || '',
-  motoristaNome: motorista.nome,
-  motoristaCodigo: motorista.codigo,
-  motoristaWhatsapp: motorista.whatsapp || '',
-  motoristaEmail: motorista.email || '',
-  unidade: motorista.unidade || '',
-  tipoReposicao: 'POS_ROTA',
-  causa: `SOBRA EM ROTA - ${tipoLabel.toUpperCase()}`,
-  produtos: [],
-  fotos: { fotosSobra: fotosUrls },
-  observacaoGeral: observacao.trim() || '',
-};
+const { data, error } = await supabase.functions.invoke('motorista-login', {
+  body: { identificador, senha },
+});
 
-fetch('https://n8n.revalle.com.br/webhook/reposicaowpp', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(webhookPayload),
-}).then(res => {
-  if (res.ok) console.log('Webhook pós-rota enviado com sucesso');
-  else console.error('Erro webhook pós-rota:', res.status);
-}).catch(err => console.error('Erro webhook pós-rota:', err));
+if (error) {
+  // supabase.functions.invoke wraps non-2xx responses as errors
+  // Try to extract the friendly message from the error context
+  try {
+    const errorBody = error.context ? await error.context.json() : null;
+    if (errorBody?.error) {
+      return { success: false, error: errorBody.error };
+    }
+  } catch {}
+  return { success: false, error: error.message || 'Erro ao fazer login' };
+}
 ```
 
-The webhook is fire-and-forget (non-blocking), same pattern as the existing protocol creation webhook. No database or edge function changes needed.
+This way, "Senha incorreta", "CPF ou código não encontrado", etc. will be shown as friendly toast messages instead of the raw edge function error.
 
