@@ -77,22 +77,36 @@ export function ProdutoAutocomplete({
 
   return (
     <div ref={wrapperRef} className="relative">
-      <div className="relative">
+       <div className="relative">
         <Input
           value={inputValue}
           onChange={handleInputChange}
-          onFocus={() => inputValue.length >= 2 && setIsOpen(true)}
+          onFocus={() => {
+            if (isSelected) return;
+            if (inputValue.length >= 2) setIsOpen(true);
+          }}
           onBlur={() => {
             setTimeout(() => onBlur?.(), 150);
           }}
           placeholder={placeholder}
-          className={cn("h-11 text-base pr-10 placeholder:text-muted-foreground/50", className)}
+          className={cn(
+            "h-11 text-base pr-16 placeholder:text-muted-foreground/50",
+            isSelected && "border-green-500/50 bg-green-50/30 dark:bg-green-950/20",
+            className
+          )}
         />
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+          {isSelected && inputValue && (
+            <button type="button" onClick={handleClear} className="text-muted-foreground hover:text-foreground">
+              <X size={16} />
+            </button>
+          )}
           {isLoading ? (
-            <Loader2 size={18} className="animate-spin" />
+            <Loader2 size={18} className="animate-spin text-muted-foreground" />
+          ) : isSelected ? (
+            <CheckCircle2 size={18} className="text-green-500" />
           ) : (
-            <Search size={18} />
+            <Search size={18} className="text-muted-foreground" />
           )}
         </div>
       </div>
