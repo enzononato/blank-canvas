@@ -1645,7 +1645,7 @@ export default function MotoristaPortal() {
       )}
 
       {/* Submit Button - Only show on new protocol tab */}
-      {activeTab === 'novo' && (
+      {currentView === 'reposicao' && (
         <div className="mt-1 mb-6 flex justify-center" data-tour="btn-enviar">
           <button 
             type="button"
