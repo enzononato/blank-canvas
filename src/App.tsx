@@ -7,6 +7,7 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtocolosProvider } from "@/contexts/ProtocolosContext";
 import { MotoristaAuthProvider } from "@/contexts/MotoristaAuthContext";
+import { RnAuthProvider } from "@/contexts/RnAuthContext";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { KeyboardShortcutsModal } from "@/components/KeyboardShortcutsModal";
