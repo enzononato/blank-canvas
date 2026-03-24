@@ -42,6 +42,7 @@ const App = () => (
       <AuthProvider>
         <ProtocolosProvider>
           <MotoristaAuthProvider>
+          <RnAuthProvider>
             <TooltipProvider>
               <Toaster />
               <Sonner />
