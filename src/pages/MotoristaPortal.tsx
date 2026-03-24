@@ -27,7 +27,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Plus, Minus, Trash2, CheckCircle, Camera, Package, X, AlertCircle, Check, CalendarIcon, LogOut, FileText, PlusCircle, Phone, Loader2, MessageCircle, Copy, Route } from 'lucide-react';
+import { Plus, Minus, Trash2, CheckCircle, Camera, Package, X, AlertCircle, Check, CalendarIcon, LogOut, FileText, PlusCircle, Phone, Loader2, MessageCircle, Copy, Route, ArrowLeft } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Protocolo, Produto, FotosProtocolo } from '@/types';
 import { format } from 'date-fns';
