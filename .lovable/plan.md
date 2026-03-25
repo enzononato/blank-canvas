@@ -1,45 +1,58 @@
 
+Objetivo: corrigir o problema “não entra em nenhuma tela” com foco em resiliência de autenticação (Admin, Motorista e RN), já que os logs mostram falhas intermitentes de backend (timeouts 500/504 e `context canceled`) em `/token` e nas funções de login.
 
-## Problema encontrado
+1) Consolidar tratamento de erro de rede/timeout nos 3 fluxos de login
+- Criar um util único (ex.: `src/lib/authErrorHandling.ts`) para:
+  - classificar erros de timeout, indisponibilidade e credenciais inválidas;
+  - padronizar mensagens amigáveis para UI;
+  - evitar mensagens genéricas (“Failed to fetch”).
+- Aplicar em:
+  - `src/contexts/AuthContext.tsx` (login admin)
+  - `src/contexts/MotoristaAuthContext.tsx`
+  - `src/contexts/RnAuthContext.tsx`
 
-Ao mover o `ProtocolosProvider` para o nível de rota (apenas em `/dashboard` e `/protocolos`), duas outras páginas que também usam `useProtocolos()` ficaram sem o provider, causando crash:
+2) Adicionar retry controlado para falhas transitórias
+- Implementar retry curto com backoff (ex.: 2 tentativas adicionais) apenas para erros de rede/timeout.
+- Não aplicar retry para credencial inválida.
+- Garantir que `isLoading` sempre finalize, mesmo com exceções encadeadas.
 
-1. **`/abrir-protocolo`** - rota standalone fora do `MainLayout`, usa `useProtocolos().addProtocolo`
-2. **`/configuracoes`** - dentro do `MainLayout` mas sem `ProtocolosProvider`, usa `useProtocolos().protocolos`
+3) Melhorar feedback visual nas telas de login
+- Em `src/pages/Login.tsx`, `src/pages/MotoristaLogin.tsx`, `src/pages/RnLogin.tsx`:
+  - trocar mensagem única de erro por textos específicos:
+    - “credenciais inválidas”
+    - “sistema instável, tente novamente em instantes”
+  - incluir botão “Tentar novamente” mantendo os campos preenchidos.
+- Resultado esperado: usuário entende se é erro dele ou instabilidade do sistema.
 
-As demais páginas (Sobras, Motoristas, Clientes, Unidades, Usuarios, Numeros, LogsAuditoria, AlteracaoPedidos, RepresentantesNegocio) **não** usam `useProtocolos` e estão corretas.
+4) Fortalecer chamadas das funções de login (Motorista/RN)
+- Ajustar CORS headers das funções para o conjunto completo recomendado, reduzindo risco de falha de preflight em navegadores/SDKs novos.
+  - `supabase/functions/motorista-login/index.ts`
+  - `supabase/functions/rn-login/index.ts`
+- Manter retorno estruturado `{ success: false, error: '...' }` para UX consistente.
 
----
+5) Instrumentação mínima para diagnóstico contínuo
+- Adicionar logs de erro no cliente com contexto do fluxo (`admin`, `motorista`, `rn`) e tipo classificado do erro.
+- Não expor detalhes sensíveis ao usuário final.
+- Facilita identificar se a próxima falha é de autenticação, função ou indisponibilidade do backend.
 
-## Plano de correção
+Arquivos previstos
+- `src/lib/authErrorHandling.ts` (novo)
+- `src/contexts/AuthContext.tsx`
+- `src/contexts/MotoristaAuthContext.tsx`
+- `src/contexts/RnAuthContext.tsx`
+- `src/pages/Login.tsx`
+- `src/pages/MotoristaLogin.tsx`
+- `src/pages/RnLogin.tsx`
+- `supabase/functions/motorista-login/index.ts`
+- `supabase/functions/rn-login/index.ts`
 
-### 1. Página `/configuracoes` - Adicionar ProtocolosProvider na rota
+Critérios de aceite
+- Nenhum login fica preso em “Entrando...” indefinidamente.
+- Em cenário de timeout, usuário recebe mensagem clara de instabilidade e consegue tentar novamente sem recarregar.
+- Em credencial inválida, mensagem específica aparece sem retry desnecessário.
+- Fluxos Admin, Motorista e RN exibem comportamento consistente.
 
-No `App.tsx`, envolver `Configuracoes` com `ProtocolosProvider`, igual ao Dashboard e Protocolos:
-
-```tsx
-<Route path="/configuracoes" element={
-  <ProtectedRoute allowedRoles={['admin']}>
-    <ProtocolosProvider><Configuracoes /></ProtocolosProvider>
-  </ProtectedRoute>
-} />
-```
-
-### 2. Página `/abrir-protocolo` - Usar hook leve ao invés do contexto pesado
-
-A página `AbrirProtocolo` só precisa de `addProtocolo`. Em vez de carregar todos os 3.400+ protocolos via `ProtocolosProvider`, trocar para o hook leve `useAddProtocolo` que já existe:
-
-- Substituir `import { useProtocolos }` por `import { useAddProtocolo }`
-- Trocar `const { addProtocolo } = useProtocolos()` por `const { addProtocolo } = useAddProtocolo()`
-
-Isso mantém a página rápida sem precisar do provider pesado.
-
----
-
-## Detalhes técnicos
-
-| Arquivo | Alteração |
-|---------|-----------|
-| `src/App.tsx` | Envolver rota `/configuracoes` com `ProtocolosProvider` |
-| `src/pages/AbrirProtocolo.tsx` | Trocar `useProtocolos` por `useAddProtocolo` |
-
+Detalhes técnicos (resumo)
+- Causa observada: falhas intermitentes de infraestrutura (timeouts no auth/token e consultas nas funções), não um único bug de tela.
+- Estratégia: tornar o front resiliente a indisponibilidade transitória e reduzir “Failed to fetch” opaco.
+- Sem mudanças de schema/migração nesta etapa; foco em robustez de autenticação e UX de erro.
