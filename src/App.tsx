@@ -60,8 +60,8 @@ const App = () => (
                   <Route path="/rn/portal" element={<RnPortal />} />
                   <Route path="/" element={<Navigate to="/dashboard" replace />} />
                   <Route element={<MainLayout />}>
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/protocolos" element={<Protocolos />} />
+                    <Route path="/dashboard" element={<ProtocolosProvider><Dashboard /></ProtocolosProvider>} />
+                    <Route path="/protocolos" element={<ProtocolosProvider><Protocolos /></ProtocolosProvider>} />
                     <Route 
                       path="/sobras" 
                       element={
