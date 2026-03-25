@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Briefcase, LogOut, Search, Package, FileText, Loader2 } from 'lucide-react';
+import { RnReenvioModal } from '@/components/rn/RnReenvioModal';
 
 interface ProtocoloRow {
   id: string;
@@ -31,6 +32,7 @@ export default function RnPortal() {
   const [protocolos, setProtocolos] = useState<ProtocoloRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('abertos');
+  const [selectedProtocolo, setSelectedProtocolo] = useState<ProtocoloRow | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated || !representante) {
@@ -151,7 +153,7 @@ export default function RnPortal() {
                   protocolos.map(p => {
                     const prods = parseProdutos(p.produtos);
                     return (
-                      <Card key={p.id} className="overflow-hidden">
+                      <Card key={p.id} className="overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" onClick={() => setSelectedProtocolo(p)}>
                         <CardContent className="p-4 space-y-2">
                           <div className="flex items-center justify-between">
                             <span className="font-mono font-bold text-sm text-foreground">#{p.numero}</span>
@@ -193,6 +195,13 @@ export default function RnPortal() {
           </Tabs>
         </div>
       </div>
+
+      <RnReenvioModal
+        protocolo={selectedProtocolo}
+        open={!!selectedProtocolo}
+        onClose={() => setSelectedProtocolo(null)}
+        representante={representante}
+      />
     </div>
   );
 }
