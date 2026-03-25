@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Briefcase, LogOut, Search, Package, FileText, Loader2 } from 'lucide-react';
+import { RnReenvioModal } from '@/components/rn/RnReenvioModal';
 
 interface ProtocoloRow {
   id: string;
@@ -28,9 +29,11 @@ export default function RnPortal() {
   const navigate = useNavigate();
   const { representante, logout, isAuthenticated } = useRnAuth();
   const [searchPdv, setSearchPdv] = useState('');
+  const [searchedPdv, setSearchedPdv] = useState('');
   const [protocolos, setProtocolos] = useState<ProtocoloRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('abertos');
+  const [selectedProtocolo, setSelectedProtocolo] = useState<ProtocoloRow | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated || !representante) {
@@ -38,36 +41,39 @@ export default function RnPortal() {
     }
   }, [isAuthenticated, representante, navigate]);
 
-  useEffect(() => {
-    if (representante) fetchProtocolos();
-  }, [representante, activeTab]);
-
-  const fetchProtocolos = async () => {
-    if (!representante) return;
+  const fetchProtocolos = async (pdvCode?: string) => {
+    const code = pdvCode ?? searchPdv.trim();
+    if (!representante || !code) {
+      setProtocolos([]);
+      return;
+    }
     setIsLoading(true);
+    setSearchedPdv(code);
 
     let statusFilter: string[];
     if (activeTab === 'abertos') statusFilter = ['aberto'];
-    else if (activeTab === 'em_atendimento') statusFilter = ['em_atendimento'];
+    else if (activeTab === 'em_atendimento') statusFilter = ['em_andamento'];
     else statusFilter = ['encerrado'];
 
-    let query = supabase
+    const { data, error } = await supabase
       .from('protocolos')
       .select('id, numero, motorista_nome, codigo_pdv, data, hora, status, tipo_reposicao, causa, produtos, nota_fiscal, mapa')
       .eq('motorista_unidade', representante.unidade)
       .in('status', statusFilter)
-      .order('created_at', { ascending: false });
+      .eq('codigo_pdv', code)
+      .order('created_at', { ascending: false })
+      .limit(100);
 
-    if (searchPdv.trim()) {
-      query = query.ilike('codigo_pdv', `%${searchPdv.trim()}%`);
-    }
-
-    const { data, error } = await query.limit(100);
     if (!error && data) setProtocolos(data as ProtocoloRow[]);
     setIsLoading(false);
   };
 
   const handleSearch = () => fetchProtocolos();
+
+  // Re-fetch when tab changes only if a search was already performed
+  useEffect(() => {
+    if (searchedPdv) fetchProtocolos(searchedPdv);
+  }, [activeTab]);
 
   const handleLogout = () => {
     logout();
@@ -79,7 +85,7 @@ export default function RnPortal() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'aberto': return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 border-yellow-300">Aberto</Badge>;
-      case 'em_atendimento': return <Badge variant="outline" className="bg-blue-500/10 text-blue-700 border-blue-300">Em Atendimento</Badge>;
+      case 'em_andamento': return <Badge variant="outline" className="bg-blue-500/10 text-blue-700 border-blue-300">Em Atendimento</Badge>;
       case 'encerrado': return <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 border-emerald-300">Encerrado</Badge>;
       default: return <Badge variant="outline">{status}</Badge>;
     }
@@ -108,6 +114,15 @@ export default function RnPortal() {
           <Button variant="ghost" size="sm" onClick={handleLogout} className="text-primary-foreground/70 hover:text-primary-foreground hover:bg-primary-foreground/10">
             <LogOut size={18} className="mr-1" /> Sair
           </Button>
+        </div>
+      </div>
+
+      {/* Welcome banner */}
+      <div className="px-4 pt-3 pb-1 bg-card">
+        <div className="max-w-2xl mx-auto">
+          <p className="text-xs text-muted-foreground">
+            👋 Olá, <span className="font-medium text-foreground">{representante.nome}</span>! Busque protocolos pelo código do PDV.
+          </p>
         </div>
       </div>
 
@@ -142,16 +157,22 @@ export default function RnPortal() {
               <TabsContent key={tab} value={tab} className="mt-4 space-y-3">
                 {isLoading ? (
                   <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+                ) : !searchedPdv ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Search className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                    <p className="text-sm">Digite o código do PDV acima para buscar protocolos</p>
+                  </div>
                 ) : protocolos.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <FileText className="w-10 h-10 mx-auto mb-2 opacity-40" />
-                    <p className="text-sm">Nenhum protocolo encontrado</p>
+                    <p className="text-sm">Nenhum protocolo encontrado para o PDV "{searchedPdv}"</p>
+                    <p className="text-xs mt-1 opacity-70">Unidade: {representante.unidade}</p>
                   </div>
                 ) : (
                   protocolos.map(p => {
                     const prods = parseProdutos(p.produtos);
                     return (
-                      <Card key={p.id} className="overflow-hidden">
+                      <Card key={p.id} className="overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all" onClick={() => setSelectedProtocolo(p)}>
                         <CardContent className="p-4 space-y-2">
                           <div className="flex items-center justify-between">
                             <span className="font-mono font-bold text-sm text-foreground">#{p.numero}</span>
@@ -193,6 +214,13 @@ export default function RnPortal() {
           </Tabs>
         </div>
       </div>
+
+      <RnReenvioModal
+        protocolo={selectedProtocolo}
+        open={!!selectedProtocolo}
+        onClose={() => setSelectedProtocolo(null)}
+        representante={representante}
+      />
     </div>
   );
 }

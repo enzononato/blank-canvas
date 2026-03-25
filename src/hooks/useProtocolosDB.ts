@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Protocolo, Produto, FotosProtocolo, ObservacaoLog } from '@/types';
@@ -309,6 +310,33 @@ export function useProtocolosDB() {
       });
     }
   });
+
+  // Realtime: escuta INSERT/UPDATE/DELETE na tabela protocolos
+  useEffect(() => {
+    const channel = supabase
+      .channel('protocolos-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'protocolos' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            toast({
+              title: '📋 Novo protocolo recebido!',
+              description: `Protocolo ${(payload.new as any)?.numero || ''} acabou de chegar.`,
+            });
+          }
+          // Deferir para evitar conflito com ciclo de render do React
+          setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['protocolos'] });
+          }, 100);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   return {
     protocolos,
