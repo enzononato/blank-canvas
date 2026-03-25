@@ -148,7 +148,7 @@ export default function RnPortal() {
               <TabsContent key={tab} value={tab} className="mt-4 space-y-3">
                 {isLoading ? (
                   <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-                ) : !searchPdv.trim() ? (
+                ) : !searchedPdv ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <Search className="w-10 h-10 mx-auto mb-2 opacity-40" />
                     <p className="text-sm">Digite o código do PDV acima para buscar protocolos</p>
@@ -156,7 +156,7 @@ export default function RnPortal() {
                 ) : protocolos.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <FileText className="w-10 h-10 mx-auto mb-2 opacity-40" />
-                    <p className="text-sm">Nenhum protocolo encontrado para o PDV "{searchPdv}"</p>
+                    <p className="text-sm">Nenhum protocolo encontrado para o PDV "{searchedPdv}"</p>
                     <p className="text-xs mt-1 opacity-70">Unidade: {representante.unidade}</p>
                   </div>
                 ) : (
