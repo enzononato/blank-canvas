@@ -114,7 +114,7 @@ const App = () => (
                       path="/configuracoes" 
                       element={
                         <ProtectedRoute allowedRoles={['admin']}>
-                          <Configuracoes />
+                          <ProtocolosProvider><Configuracoes /></ProtocolosProvider>
                         </ProtectedRoute>
                       } 
                     />
