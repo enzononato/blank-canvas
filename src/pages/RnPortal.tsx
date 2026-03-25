@@ -29,6 +29,7 @@ export default function RnPortal() {
   const navigate = useNavigate();
   const { representante, logout, isAuthenticated } = useRnAuth();
   const [searchPdv, setSearchPdv] = useState('');
+  const [searchedPdv, setSearchedPdv] = useState('');
   const [protocolos, setProtocolos] = useState<ProtocoloRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('abertos');
@@ -40,12 +41,14 @@ export default function RnPortal() {
     }
   }, [isAuthenticated, representante, navigate]);
 
-  const fetchProtocolos = async () => {
-    if (!representante || !searchPdv.trim()) {
+  const fetchProtocolos = async (pdvCode?: string) => {
+    const code = pdvCode ?? searchPdv.trim();
+    if (!representante || !code) {
       setProtocolos([]);
       return;
     }
     setIsLoading(true);
+    setSearchedPdv(code);
 
     let statusFilter: string[];
     if (activeTab === 'abertos') statusFilter = ['aberto'];
@@ -57,7 +60,7 @@ export default function RnPortal() {
       .select('id, numero, motorista_nome, codigo_pdv, data, hora, status, tipo_reposicao, causa, produtos, nota_fiscal, mapa')
       .eq('motorista_unidade', representante.unidade)
       .in('status', statusFilter)
-      .eq('codigo_pdv', searchPdv.trim())
+      .eq('codigo_pdv', code)
       .order('created_at', { ascending: false })
       .limit(100);
 
@@ -67,10 +70,9 @@ export default function RnPortal() {
 
   const handleSearch = () => fetchProtocolos();
 
-  // Re-fetch when tab changes if there's an active search
+  // Re-fetch when tab changes only if a search was already performed
   useEffect(() => {
-    if (searchPdv.trim()) fetchProtocolos();
-    else setProtocolos([]);
+    if (searchedPdv) fetchProtocolos(searchedPdv);
   }, [activeTab]);
 
   const handleLogout = () => {
@@ -146,7 +148,7 @@ export default function RnPortal() {
               <TabsContent key={tab} value={tab} className="mt-4 space-y-3">
                 {isLoading ? (
                   <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-                ) : !searchPdv.trim() ? (
+                ) : !searchedPdv ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <Search className="w-10 h-10 mx-auto mb-2 opacity-40" />
                     <p className="text-sm">Digite o código do PDV acima para buscar protocolos</p>
@@ -154,7 +156,7 @@ export default function RnPortal() {
                 ) : protocolos.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <FileText className="w-10 h-10 mx-auto mb-2 opacity-40" />
-                    <p className="text-sm">Nenhum protocolo encontrado para o PDV "{searchPdv}"</p>
+                    <p className="text-sm">Nenhum protocolo encontrado para o PDV "{searchedPdv}"</p>
                     <p className="text-xs mt-1 opacity-70">Unidade: {representante.unidade}</p>
                   </div>
                 ) : (
