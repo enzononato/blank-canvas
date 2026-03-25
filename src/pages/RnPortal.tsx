@@ -117,6 +117,15 @@ export default function RnPortal() {
         </div>
       </div>
 
+      {/* Welcome banner */}
+      <div className="px-4 pt-3 pb-1 bg-card">
+        <div className="max-w-2xl mx-auto">
+          <p className="text-xs text-muted-foreground">
+            👋 Olá, <span className="font-medium text-foreground">{representante.nome}</span>! Busque protocolos pelo código do PDV.
+          </p>
+        </div>
+      </div>
+
       {/* Search */}
       <div className="px-4 py-3 border-b border-border bg-card">
         <div className="max-w-2xl mx-auto flex gap-2">
