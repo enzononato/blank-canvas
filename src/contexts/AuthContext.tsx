@@ -96,8 +96,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const initializeSession = async () => {
       try {
-        const { data: { session: existingSession } } = await supabase.auth.getSession();
+        const { data: { session: existingSession }, error: sessionError } = await supabase.auth.getSession();
         if (!isMounted) return;
+
+        // Se houve erro ao restaurar sessão (token inválido/expirado), limpar tudo
+        if (sessionError) {
+          console.warn('Sessão inválida, limpando:', sessionError.message);
+          await supabase.auth.signOut();
+          setSession(null);
+          setUser(null);
+          return;
+        }
 
         setSession(existingSession);
 
@@ -106,6 +115,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (!isMounted) return;
           setUser(profile);
         } else {
+          setUser(null);
+        }
+      } catch (err) {
+        console.error('Erro ao inicializar sessão:', err);
+        // Em caso de erro inesperado, garantir que não fique travado
+        if (isMounted) {
+          setSession(null);
           setUser(null);
         }
       } finally {
