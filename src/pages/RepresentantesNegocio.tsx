@@ -18,6 +18,7 @@ import {
 import { Plus, Pencil, Trash2, Briefcase, Loader2 } from 'lucide-react';
 import { useRepresentantesDB, RepresentanteDB } from '@/hooks/useRepresentantesDB';
 import { useAuth } from '@/contexts/AuthContext';
+import { ImportarRepresentantesCSV } from '@/components/ImportarRepresentantesCSV';
 
 export default function RepresentantesNegocio() {
   const { representantes, isLoading, addRepresentante, updateRepresentante, deleteRepresentante } = useRepresentantesDB();
