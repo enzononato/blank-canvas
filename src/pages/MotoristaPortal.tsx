@@ -1,0 +1,1691 @@
+import { useState, useRef, useEffect } from 'react';
+import { generateUUID } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
+import { useMotoristaAuth } from '@/contexts/MotoristaAuthContext';
+import { useAddProtocolo } from '@/hooks/useAddProtocolo';
+import { useOfflineProtocolos } from '@/hooks/useOfflineProtocolos';
+import { compressImage } from '@/utils/imageCompression';
+import { uploadFotosProtocolo, UploadProgress } from '@/utils/uploadFotoStorage';
+import { getCustomPhotoUrl } from '@/utils/urlHelpers';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Plus, Minus, Trash2, CheckCircle, Camera, Package, X, AlertCircle, Check, CalendarIcon, LogOut, FileText, PlusCircle, Phone, Loader2, MessageCircle, Copy, Route, ArrowLeft } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+import { Protocolo, Produto, FotosProtocolo } from '@/types';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
+import { ProdutoAutocomplete } from '@/components/ProdutoAutocomplete';
+import { PdvAutocomplete } from '@/components/PdvAutocomplete';
+import { MeusProtocolos } from '@/components/motorista/MeusProtocolos';
+import { PosRota } from '@/components/motorista/PosRota';
+import { MotoristaHeader } from '@/components/motorista/MotoristaHeader';
+import { DailySummary } from '@/components/motorista/DailySummary';
+import CameraCapture from '@/components/CameraCapture';
+
+interface ProdutoForm {
+  produto: string;
+  unidade: string;
+  quantidade: string;
+  validade: Date | undefined;
+}
+
+interface TouchedFields {
+  mapa: boolean;
+  codigoPdv: boolean;
+  notaFiscal: boolean;
+  tipoReposicao: boolean;
+  causa: boolean;
+  fotoMotoristaPdv: boolean;
+  fotoLoteProduto: boolean;
+  fotoAvaria: boolean;
+  whatsappContato: boolean;
+  produtos: boolean[];
+}
+// Função para formatar WhatsApp
+const formatWhatsApp = (value: string): string => {
+  const numbers = value.replace(/\D/g, '');
+  if (numbers.length <= 2) return numbers;
+  if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+  if (numbers.length <= 11) return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
+  return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+};
+
+// Função para validar e-mail
+const validateEmail = (email: string): boolean => {
+  if (!email.trim()) return true; // Campo opcional
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email.trim());
+};
+
+// Função para validar WhatsApp (mínimo 10 dígitos)
+const validateWhatsApp = (whatsapp: string): boolean => {
+  const numbers = whatsapp.replace(/\D/g, '');
+  return numbers.length >= 10 && numbers.length <= 11;
+};
+
+// Função para permitir apenas números
+const formatOnlyNumbers = (value: string): string => {
+  return value.replace(/\D/g, '');
+};
+
+const causasPorTipo: Record<string, string[]> = {
+  inversao: ['ERRO DE CARREGAMENTO', 'ERRO DE ENTREGA'],
+  falta: ['FALTA DE PALLET FECHADO', 'FALTA DE PALLET MONTADO'],
+  avaria: [
+    'AVARIADO NA ROTA',
+    'CAIU NA BAIA',
+    'CARRINHO COM PROBLEMA',
+    'GARRAFEIRA QUEBRADA',
+    'PALLET QUEBRADO',
+    'PREGO NO PALLET',
+    'QUEBRA NO PDV',
+    'QUEBRADA NA CAIXA',
+    'SEM TAMPA',
+    'TAMPA AMASSADA',
+    'VAZADA'
+  ]
+};
+
+// Componente para seleção de validade com fechamento automático
+function ValidadeDatePicker({
+  validade,
+  disabled,
+  onSelect
+}: {
+  validade: Date | undefined;
+  disabled: boolean;
+  onSelect: (date: Date | undefined) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const handleSelect = (date: Date | undefined) => {
+    onSelect(date);
+    setOpen(false);
+  };
+
+  return (
+    <div className="space-y-1">
+      <Label className={cn(
+        "text-[10px] font-medium",
+        disabled ? "text-muted-foreground/50" : "text-muted-foreground"
+      )}>Validade</Label>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            disabled={disabled}
+            className={cn(
+              "h-9 w-full justify-start text-left font-normal text-xs",
+              !validade && "text-muted-foreground",
+              disabled && "opacity-50 cursor-not-allowed"
+            )}
+          >
+            {disabled ? (
+              <span className="text-muted-foreground/50">N/A</span>
+            ) : validade ? (
+              format(validade, "dd/MM/yy")
+            ) : (
+              <CalendarIcon className="h-3.5 w-3.5" />
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={validade}
+            onSelect={handleSelect}
+            locale={ptBR}
+            className="pointer-events-auto"
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+export default function MotoristaPortal() {
+  const navigate = useNavigate();
+  const { motorista, logout, isAuthenticated } = useMotoristaAuth();
+  const { addProtocolo } = useAddProtocolo();
+  const { isOnline, pendingCount, saveOffline, syncPending } = useOfflineProtocolos();
+
+  const [currentView, setCurrentView] = useState<'dashboard' | 'reposicao' | 'pos-rota' | 'meus-protocolos'>('dashboard');
+
+  // Form state
+  const [mapa, setMapa] = useState('');
+  const [codigoPdv, setCodigoPdv] = useState('');
+  const [pdvSelecionadoDaLista, setPdvSelecionadoDaLista] = useState(false);
+  const [notaFiscal, setNotaFiscal] = useState('');
+  const [tipoReposicao, setTipoReposicao] = useState('');
+  const [causa, setCausa] = useState('');
+  const [produtos, setProdutos] = useState<ProdutoForm[]>([
+    { produto: '', unidade: '', quantidade: '1', validade: undefined }
+  ]);
+  const [whatsappContato, setWhatsappContato] = useState('');
+  const [emailContato, setEmailContato] = useState('');
+  const [observacao, setObservacao] = useState('');
+  const [protocoloCriado, setProtocoloCriado] = useState(false);
+  const [numeroProtocolo, setNumeroProtocolo] = useState('');
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
+
+  // Estado para guardar dados do protocolo criado (usados na tela de sucesso)
+  const [fotosProtocoloCriado, setFotosProtocoloCriado] = useState<{
+    fotoMotoristaPdv: string;
+    fotoLoteProduto: string;
+    fotoAvaria?: string;
+  } | null>(null);
+  const [dataProtocoloCriado, setDataProtocoloCriado] = useState('');
+  const [horaProtocoloCriado, setHoraProtocoloCriado] = useState('');
+  const [produtosProtocoloCriado, setProdutosProtocoloCriado] = useState<Array<{
+    codigo: string; nome: string; unidade: string; quantidade: number; validade: string;
+  }>>([]);
+  const [tipoReposicaoCriado, setTipoReposicaoCriado] = useState('');
+  const [causaCriada, setCausaCriada] = useState('');
+  const [mapaCriado, setMapaCriado] = useState('');
+  const [codigoPdvCriado, setCodigoPdvCriado] = useState('');
+  const [notaFiscalCriada, setNotaFiscalCriada] = useState('');
+  const [whatsappContatoCriado, setWhatsappContatoCriado] = useState('');
+  const [emailContatoCriado, setEmailContatoCriado] = useState('');
+  const [observacaoCriada, setObservacaoCriada] = useState('');
+  const [mensagemCopiada, setMensagemCopiada] = useState(false);
+
+  // Touched state for validation
+  const [touched, setTouched] = useState<TouchedFields>({
+    mapa: false,
+    codigoPdv: false,
+    notaFiscal: false,
+    tipoReposicao: false,
+    causa: false,
+    fotoMotoristaPdv: false,
+    fotoLoteProduto: false,
+    fotoAvaria: false,
+    whatsappContato: false,
+    produtos: [false]
+  });
+
+  // Photo state
+  const [fotoMotoristaPdv, setFotoMotoristaPdv] = useState<string | null>(null);
+  const [fotoLoteProduto, setFotoLoteProduto] = useState<string | null>(null);
+  const [fotoAvaria, setFotoAvaria] = useState<string | null>(null);
+
+  // Camera modal state
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraTarget, setCameraTarget] = useState<'fotoMotoristaPdv' | 'fotoLoteProduto' | 'fotoAvaria' | null>(null);
+
+  // Calcular progresso do upload
+  const getUploadPercentage = () => {
+    if (!uploadProgress) return 0;
+    const statuses = [
+      uploadProgress.fotoMotoristaPdv,
+      uploadProgress.fotoLoteProduto,
+      tipoReposicao === 'avaria' ? uploadProgress.fotoAvaria : 'success'
+    ];
+    const completed = statuses.filter(s => s === 'success').length;
+    return Math.round((completed / statuses.length) * 100);
+  };
+
+  // Sincronizar protocolos pendentes quando online
+  useEffect(() => {
+    if (isOnline && pendingCount > 0) {
+      syncPending(addProtocolo);
+    }
+  }, [isOnline, pendingCount, syncPending, addProtocolo]);
+
+  // Notificações em tempo real quando status do protocolo mudar
+  useEffect(() => {
+    if (!motorista?.codigo) return;
+
+    const channel = supabase
+      .channel('protocolo-status-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'protocolos',
+          filter: `motorista_codigo=eq.${motorista.codigo}`
+        },
+        (payload) => {
+          const oldData = payload.old as { status?: string; numero?: string };
+          const newData = payload.new as { status?: string; numero?: string };
+          
+          if (oldData.status !== newData.status) {
+            toast({
+              title: '📢 Status atualizado!',
+              description: `Protocolo #${newData.numero} mudou de "${oldData.status}" para "${newData.status}"`,
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [motorista?.codigo]);
+
+  // Validation functions
+  const isFieldValid = (field: keyof TouchedFields, value: string | null): boolean => {
+    if (field === 'tipoReposicao') return !!value;
+    if (field === 'causa') return !tipoReposicao || !!value;
+    if (field === 'fotoMotoristaPdv' || field === 'fotoLoteProduto') {
+      return !tipoReposicao || !!value;
+    }
+    if (field === 'fotoAvaria') return tipoReposicao !== 'avaria' || !!value;
+    return typeof value === 'string' && value.trim().length > 0;
+  };
+
+  const podeAdicionarMultiplos = tipoReposicao === 'avaria' || tipoReposicao === 'falta';
+
+  const handleTipoReposicaoChange = (value: string) => {
+    if (value !== tipoReposicao) {
+      setFotoMotoristaPdv(null);
+      setFotoLoteProduto(null);
+      setFotoAvaria(null);
+      setCausa('');
+      setTouched(prev => ({
+        ...prev,
+        fotoMotoristaPdv: false,
+        fotoLoteProduto: false,
+        fotoAvaria: false,
+        causa: false
+      }));
+      if (value === 'inversao' && produtos.length > 1) {
+        setProdutos([produtos[0]]);
+        setTouched(prev => ({ ...prev, produtos: [prev.produtos[0] || false] }));
+      }
+      // Limpar validades quando tipo for "falta"
+      if (value === 'falta') {
+        setProdutos(prev => prev.map(p => ({ ...p, validade: undefined })));
+      }
+    }
+    setTipoReposicao(value);
+    handleBlur('tipoReposicao');
+  };
+
+  const getFieldStatus = (field: keyof TouchedFields, value: string | null): 'valid' | 'invalid' | 'neutral' => {
+    const isTouched = touched[field];
+    if (!isTouched && typeof isTouched === 'boolean') return 'neutral';
+    return isFieldValid(field, value) ? 'valid' : 'invalid';
+  };
+
+  const getInputClassName = (field: keyof TouchedFields, value: string | null, baseClass: string = 'h-12 text-base'): string => {
+    const status = getFieldStatus(field, value);
+    return cn(
+      baseClass,
+      status === 'valid' && 'border-green-500 focus:ring-green-500 focus:border-green-500',
+      status === 'invalid' && 'border-red-500 focus:ring-red-500 focus:border-red-500'
+    );
+  };
+
+  const handleBlur = (field: keyof TouchedFields) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+  };
+
+  const isProdutoValid = (produto: ProdutoForm): boolean => {
+    return produto.produto.trim().length > 0;
+  };
+
+  const handleProdutoBlur = (index: number) => {
+    setTouched(prev => {
+      const newProdutos = [...prev.produtos];
+      newProdutos[index] = true;
+      return { ...prev, produtos: newProdutos };
+    });
+  };
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated || !motorista) {
+      navigate('/motorista/login', { replace: true });
+    }
+  }, [isAuthenticated, motorista, navigate]);
+
+  if (!isAuthenticated || !motorista) {
+    return null;
+  }
+
+  const handleLogout = () => {
+    logout();
+    navigate('/motorista/login', { replace: true });
+  };
+
+  // Compressão automática de imagens
+  const handleFotoUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setFoto: (value: string | null) => void
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: 'Arquivo muito grande',
+        description: 'O tamanho máximo é 10MB',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setIsCompressing(true);
+    
+    try {
+      // Comprime a imagem para máximo 1200px e qualidade 70%
+      const compressedImage = await compressImage(file, 1200, 0.7);
+      setFoto(compressedImage);
+      
+      // Calcular redução
+      const originalSize = file.size;
+      const compressedSize = Math.round((compressedImage.length * 3) / 4); // Base64 overhead
+      const reduction = Math.round((1 - compressedSize / originalSize) * 100);
+      
+      if (reduction > 0) {
+        toast({
+          title: 'Imagem otimizada',
+          description: `Tamanho reduzido em ${reduction}%`,
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao comprimir imagem:', error);
+      // Fallback: carregar sem compressão
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setFoto(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsCompressing(false);
+    }
+  };
+
+  const addProduto = () => {
+    setProdutos([...produtos, { produto: '', unidade: '', quantidade: '1', validade: undefined }]);
+    setTouched(prev => ({ ...prev, produtos: [...prev.produtos, false] }));
+  };
+
+  const removeProduto = (index: number) => {
+    if (produtos.length > 1) {
+      setProdutos(produtos.filter((_, i) => i !== index));
+      setTouched(prev => ({ ...prev, produtos: prev.produtos.filter((_, i) => i !== index) }));
+    }
+  };
+
+  const updateProduto = (index: number, field: keyof ProdutoForm, value: string | number | Date | undefined, embalagem?: string) => {
+    const updated = [...produtos];
+    updated[index] = { ...updated[index], [field]: value };
+    // Se uma embalagem foi passada, atualizar também o campo unidade
+    if (embalagem) {
+      updated[index].unidade = embalagem;
+    }
+    setProdutos(updated);
+  };
+
+  const resetForm = () => {
+    setMapa('');
+    setCodigoPdv('');
+    setPdvSelecionadoDaLista(false);
+    setNotaFiscal('');
+    setTipoReposicao('');
+    setCausa('');
+    setProdutos([{ produto: '', unidade: '', quantidade: '1', validade: undefined }]);
+    setWhatsappContato('');
+    setEmailContato('');
+    setObservacao('');
+    setFotoMotoristaPdv(null);
+    setFotoLoteProduto(null);
+    setFotoAvaria(null);
+    setProtocoloCriado(false);
+    setNumeroProtocolo('');
+    setFotosProtocoloCriado(null);
+    setDataProtocoloCriado('');
+    setHoraProtocoloCriado('');
+    setProdutosProtocoloCriado([]);
+    setTipoReposicaoCriado('');
+    setCausaCriada('');
+    setMapaCriado('');
+    setCodigoPdvCriado('');
+    setNotaFiscalCriada('');
+    setWhatsappContatoCriado('');
+    setEmailContatoCriado('');
+    setObservacaoCriada('');
+    setTouched({
+      mapa: false,
+      codigoPdv: false,
+      notaFiscal: false,
+      tipoReposicao: false,
+      causa: false,
+      fotoMotoristaPdv: false,
+      fotoLoteProduto: false,
+      fotoAvaria: false,
+      whatsappContato: false,
+      produtos: [false]
+    });
+  };
+
+  const handleSubmit = async () => {
+    // Validations
+    if (!mapa.trim()) {
+      toast({ title: 'Erro', description: 'Preencha o campo MAPA', variant: 'destructive' });
+      return;
+    }
+    if (!codigoPdv.trim()) {
+      toast({ title: 'Erro', description: 'Preencha o Código do PDV', variant: 'destructive' });
+      return;
+    }
+    if (!pdvSelecionadoDaLista) {
+      toast({ title: 'Erro', description: 'Selecione um PDV válido da lista', variant: 'destructive' });
+      return;
+    }
+    if (!notaFiscal.trim()) {
+      toast({ title: 'Erro', description: 'Preencha a Nota Fiscal', variant: 'destructive' });
+      return;
+    }
+    if (!tipoReposicao) {
+      toast({ title: 'Erro', description: 'Selecione o tipo de reposição', variant: 'destructive' });
+      return;
+    }
+    if (!causa) {
+      toast({ title: 'Erro', description: 'Selecione a causa', variant: 'destructive' });
+      return;
+    }
+    if (!whatsappContato.trim() || !validateWhatsApp(whatsappContato)) {
+      toast({ title: 'Erro', description: 'WhatsApp inválido. Digite um número completo.', variant: 'destructive' });
+      return;
+    }
+    if (emailContato.trim() && !validateEmail(emailContato)) {
+      toast({ title: 'Erro', description: 'E-mail inválido. Verifique o formato.', variant: 'destructive' });
+      return;
+    }
+
+    // Validação de fotos obrigatórias
+    if (!fotoMotoristaPdv) {
+      toast({ title: 'Erro', description: 'Foto do Motorista/PDV é obrigatória', variant: 'destructive' });
+      return;
+    }
+    if (!fotoLoteProduto) {
+      toast({ title: 'Erro', description: 'Foto do Lote do Produto é obrigatória', variant: 'destructive' });
+      return;
+    }
+    if (tipoReposicao === 'avaria' && !fotoAvaria) {
+      toast({ title: 'Erro', description: 'Foto da Avaria é obrigatória', variant: 'destructive' });
+      return;
+    }
+
+    const validProdutos = produtos.filter(p => p.produto.trim());
+    if (validProdutos.length === 0) {
+      toast({ title: 'Erro', description: 'Adicione pelo menos um produto', variant: 'destructive' });
+      return;
+    }
+
+    // Validar que todos os produtos têm quantidade válida
+    const produtosSemQuantidade = validProdutos.filter(p => !p.quantidade || parseInt(p.quantidade) < 1);
+    if (produtosSemQuantidade.length > 0) {
+      toast({ title: 'Erro', description: 'Preencha a quantidade de todos os produtos', variant: 'destructive' });
+      return;
+    }
+
+    const now = new Date();
+    const numero = `PROTOC-${format(now, 'yyyyMMddHHmmss')}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+
+    const produtosFormatados = validProdutos.map(p => {
+      const parts = p.produto.split(' - ');
+      const codigo = parts[0] || '';
+      const nome = parts.slice(1).join(' - ') || p.produto;
+      return {
+        codigo,
+        nome,
+        unidade: p.unidade || 'UND',
+        quantidade: parseInt(p.quantidade) || 1,
+        validade: p.validade ? format(p.validade, 'dd/MM/yyyy') : ''
+      };
+    });
+
+    // Se offline, salvar localmente com fotos base64
+    if (!isOnline) {
+      const fotosProtocolo: FotosProtocolo = {
+        fotoMotoristaPdv: fotoMotoristaPdv || undefined,
+        fotoLoteProduto: fotoLoteProduto || undefined,
+        fotoAvaria: fotoAvaria || undefined
+      };
+
+      const novoProtocolo: Protocolo = {
+        id: generateUUID(),
+        numero,
+        motorista: motorista,
+        data: format(now, 'dd/MM/yyyy'),
+        hora: format(now, 'HH:mm:ss'),
+        sla: '4h',
+        status: 'aberto',
+        validacao: false,
+        lancado: false,
+        enviadoLancar: false,
+        enviadoEncerrar: false,
+        tipoReposicao: tipoReposicao.toUpperCase(),
+        causa,
+        mapa,
+        codigoPdv,
+        notaFiscal,
+        produtos: produtosFormatados as Produto[],
+        fotosProtocolo,
+        observacaoGeral: observacao || undefined,
+        contatoWhatsapp: whatsappContato || undefined,
+        contatoEmail: emailContato || undefined,
+        createdAt: now.toISOString()
+      };
+
+      saveOffline(novoProtocolo);
+      setNumeroProtocolo(numero);
+      setProtocoloCriado(true);
+      return;
+    }
+
+    try {
+      // Iniciar upload com progresso
+      setIsUploading(true);
+      setUploadProgress({
+        fotoMotoristaPdv: 'pending',
+        fotoLoteProduto: 'pending',
+        fotoAvaria: tipoReposicao === 'avaria' ? 'pending' : 'success'
+      });
+
+      // Upload das fotos para o storage ANTES de salvar o protocolo
+      const fotosUrls = await uploadFotosProtocolo(
+        {
+          fotoMotoristaPdv,
+          fotoLoteProduto,
+          fotoAvaria
+        },
+        numero,
+        (progress) => setUploadProgress(progress)
+      );
+
+      setIsUploading(false);
+      setUploadProgress(null);
+
+      // Validar se os uploads foram bem-sucedidos
+      if (!fotosUrls.fotoMotoristaPdv) {
+        toast({ title: 'Erro', description: 'Erro ao fazer upload da foto Motorista/PDV após 3 tentativas.', variant: 'destructive' });
+        return;
+      }
+      if (!fotosUrls.fotoLoteProduto) {
+        toast({ title: 'Erro', description: 'Erro ao fazer upload da foto Lote do Produto após 3 tentativas.', variant: 'destructive' });
+        return;
+      }
+      if (tipoReposicao === 'avaria' && !fotosUrls.fotoAvaria) {
+        toast({ title: 'Erro', description: 'Erro ao fazer upload da foto de Avaria após 3 tentativas.', variant: 'destructive' });
+        return;
+      }
+
+      const fotosProtocolo: FotosProtocolo = {
+        fotoMotoristaPdv: fotosUrls.fotoMotoristaPdv,
+        fotoLoteProduto: fotosUrls.fotoLoteProduto,
+        fotoAvaria: fotosUrls.fotoAvaria || undefined
+      };
+
+      const novoProtocolo: Protocolo = {
+        id: generateUUID(),
+        numero,
+        motorista: motorista,
+        data: format(now, 'dd/MM/yyyy'),
+        hora: format(now, 'HH:mm:ss'),
+        sla: '4h',
+        status: 'aberto',
+        validacao: false,
+        lancado: false,
+        enviadoLancar: false,
+        enviadoEncerrar: false,
+        tipoReposicao: tipoReposicao.toUpperCase(),
+        causa,
+        mapa,
+        codigoPdv,
+        notaFiscal,
+        produtos: produtosFormatados as Produto[],
+        fotosProtocolo,
+        observacaoGeral: observacao || undefined,
+        contatoWhatsapp: whatsappContato || undefined,
+        contatoEmail: emailContato || undefined,
+        createdAt: now.toISOString(),
+        observacoesLog: [
+          {
+            id: Date.now().toString(),
+            usuarioNome: motorista.nome,
+            usuarioId: motorista.id,
+            data: format(now, 'dd/MM/yyyy'),
+            hora: format(now, 'HH:mm'),
+            acao: 'Abriu protocolo',
+            texto: `Protocolo criado pelo motorista ${motorista.codigo} - ${motorista.nome}`
+          }
+        ]
+      };
+
+      await addProtocolo(novoProtocolo);
+      setNumeroProtocolo(numero);
+      // Salvar dados do protocolo para uso na tela de sucesso (botão WhatsApp)
+      setFotosProtocoloCriado({
+        fotoMotoristaPdv: fotosUrls.fotoMotoristaPdv || '',
+        fotoLoteProduto: fotosUrls.fotoLoteProduto || '',
+        fotoAvaria: fotosUrls.fotoAvaria || undefined
+      });
+      setDataProtocoloCriado(format(now, 'dd/MM/yyyy'));
+      setHoraProtocoloCriado(format(now, 'HH:mm:ss'));
+      setProdutosProtocoloCriado(produtosFormatados);
+      setTipoReposicaoCriado(tipoReposicao.toUpperCase());
+      setCausaCriada(causa);
+      setMapaCriado(mapa);
+      setCodigoPdvCriado(codigoPdv);
+      setNotaFiscalCriada(notaFiscal);
+      setWhatsappContatoCriado(whatsappContato);
+      setEmailContatoCriado(emailContato);
+      setObservacaoCriada(observacao);
+      setProtocoloCriado(true);
+      toast({
+        title: 'Protocolo criado!',
+        description: `Protocolo ${numero} criado com sucesso`
+      });
+
+      // Enviar webhook para n8n com URLs das fotos
+      const webhookPayload = {
+        tipo: 'criacao_protocolo',
+        numero,
+        data: format(now, 'dd/MM/yyyy'),
+        hora: format(now, 'HH:mm:ss'),
+        mapa: mapa || '',
+        codigoPdv: codigoPdv || '',
+        notaFiscal: notaFiscal || '',
+        motoristaNome: motorista.nome,
+        motoristaCodigo: motorista.codigo,
+        motoristaWhatsapp: motorista.whatsapp || '',
+        motoristaEmail: motorista.email || '',
+        unidade: motorista.unidade || '',
+        tipoReposicao: tipoReposicao.toUpperCase(),
+        causa,
+        produtos: produtosFormatados,
+        fotos: {
+          fotoMotoristaPdv: getCustomPhotoUrl(fotosUrls.fotoMotoristaPdv || ''),
+          fotoLoteProduto: getCustomPhotoUrl(fotosUrls.fotoLoteProduto || ''),
+          fotoAvaria: getCustomPhotoUrl(fotosUrls.fotoAvaria || '')
+        },
+        whatsappContato: whatsappContato || '',
+        emailContato: emailContato || '',
+        observacaoGeral: observacao || ''
+      };
+
+      fetch('https://n8n.revalle.com.br/webhook/reposicaowpp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(webhookPayload),
+      }).then(response => {
+        if (response.ok) {
+          console.log('Webhook n8n enviado com sucesso');
+        } else {
+          console.error('Erro ao enviar webhook n8n:', response.status);
+        }
+      }).catch(error => {
+        console.error('Erro ao enviar webhook n8n:', error);
+      });
+
+      // Enviar e-mail se preenchido
+      if (emailContato) {
+        try {
+          const emailPayload = {
+            tipo: 'lancar' as const,
+            numero,
+            data: format(now, 'dd/MM/yyyy'),
+            hora: format(now, 'HH:mm:ss'),
+            mapa: mapa || undefined,
+            codigoPdv: codigoPdv || undefined,
+            notaFiscal: notaFiscal || undefined,
+            motoristaNome: motorista.nome,
+            unidadeNome: motorista.unidade || undefined,
+            tipoReposicao: tipoReposicao.toUpperCase(),
+            causa,
+            produtos: produtosFormatados,
+            fotosProtocolo: {
+              fotoMotoristaPdv: getCustomPhotoUrl(fotosProtocolo.fotoMotoristaPdv || ''),
+              fotoLoteProduto: getCustomPhotoUrl(fotosProtocolo.fotoLoteProduto || ''),
+              fotoAvaria: getCustomPhotoUrl(fotosProtocolo.fotoAvaria || '')
+            },
+            clienteEmail: emailContato,
+            observacaoGeral: observacao || undefined
+          };
+
+          const response = await supabase.functions.invoke('enviar-email', {
+            body: emailPayload
+          });
+
+          if (response.error) {
+            console.error('Erro ao enviar e-mail:', response.error);
+          } else {
+            console.log('E-mail enviado com sucesso');
+          }
+        } catch (emailError) {
+          console.error('Erro ao enviar e-mail:', emailError);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao criar protocolo:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao criar protocolo. Verifique sua conexão e tente novamente.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  // Open camera for a specific field
+  const openCamera = (field: 'fotoMotoristaPdv' | 'fotoLoteProduto' | 'fotoAvaria') => {
+    setCameraTarget(field);
+    setCameraOpen(true);
+  };
+
+  // Handle camera capture
+  const handleCameraCapture = async (imageDataUrl: string) => {
+    if (!cameraTarget) return;
+    
+    setIsCompressing(true);
+    try {
+      // Compress the captured image
+      const compressedImage = await compressImage(imageDataUrl);
+      
+      // Set the photo based on the target field
+      switch (cameraTarget) {
+        case 'fotoMotoristaPdv':
+          setFotoMotoristaPdv(compressedImage);
+          break;
+        case 'fotoLoteProduto':
+          setFotoLoteProduto(compressedImage);
+          break;
+        case 'fotoAvaria':
+          setFotoAvaria(compressedImage);
+          break;
+      }
+      
+      toast({
+        title: 'Foto capturada',
+        description: 'Imagem salva com sucesso!',
+      });
+    } catch (error) {
+      console.error('Error compressing image:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao processar a imagem.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsCompressing(false);
+      setCameraTarget(null);
+    }
+  };
+
+  // Photo upload card component
+  const PhotoUploadCard = ({
+    label,
+    photo,
+    setPhoto,
+    field,
+  }: {
+    label: string;
+    photo: string | null;
+    setPhoto: (value: string | null) => void;
+    field: 'fotoMotoristaPdv' | 'fotoLoteProduto' | 'fotoAvaria';
+  }) => {
+    const hasPhoto = !!photo;
+    
+    return (
+      <div className={cn(
+        "bg-muted/30 rounded-lg p-3 border-2 transition-colors",
+        hasPhoto ? 'border-green-500' : 'border-border'
+      )}>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-foreground">
+              {label}
+            </span>
+            {hasPhoto && (
+              <Check size={14} className="text-green-500" />
+            )}
+          </div>
+          {photo && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setPhoto(null)}
+              className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <X size={16} />
+            </Button>
+          )}
+        </div>
+        {photo ? (
+          <div className="relative aspect-[4/3] rounded-md overflow-hidden border border-border">
+            <img src={photo} alt={label} className="w-full h-full object-cover" />
+          </div>
+        ) : (
+          <button
+            onClick={() => openCamera(field)}
+            disabled={isCompressing}
+            className="w-full aspect-[4/3] border-2 border-dashed rounded-md flex flex-col items-center justify-center gap-3 transition-colors border-primary/40 bg-primary/5 hover:bg-primary/10 active:bg-primary/15 disabled:opacity-50"
+          >
+            <div className="w-12 h-12 rounded-full flex items-center justify-center bg-primary/10">
+              <Camera size={24} className="text-primary" />
+            </div>
+            <span className="text-sm font-medium text-primary">
+              {isCompressing ? 'Processando...' : 'Tirar Foto'}
+            </span>
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  const buildMensagem = () => [
+    `*NOVO PROTOCOLO ABERTO*`,
+    ``,
+    `*Protocolo:* ${numeroProtocolo}`,
+    ``,
+    `*Tipo:* ${tipoReposicaoCriado}`,
+    ``,
+    `*Causa:* ${causaCriada}`,
+    ``,
+    `*Data:* ${dataProtocoloCriado} \u00E0s ${horaProtocoloCriado}`,
+    ``,
+    `*MAPA:* ${mapaCriado}`,
+    ``,
+    `*C\u00F3d. PDV:* ${codigoPdvCriado}`,
+    ``,
+    `*NF:* ${notaFiscalCriada}`,
+    ``,
+    `*Motorista:* ${motorista.nome}`,
+    ``,
+    `*Unidade:* ${motorista.unidade || ''}`,
+    ``,
+    `${whatsappContatoCriado}${emailContatoCriado ? '\n' + emailContatoCriado : ''}`,
+    ``,
+    `*ITENS SOLICITADOS:*`,
+    ``,
+    produtosProtocoloCriado.map(p =>
+      `- *${p.nome}*\n   C\u00F3d: ${p.codigo} | Qtd: ${p.quantidade} ${p.unidade}${p.validade ? '\n   Validade: ' + p.validade : ''}`
+    ).join('\n\n'),
+    ``,
+    `*Obs:* ${observacaoCriada || 'Nenhuma'}`,
+    ``,
+    `*Foto Motorista:*`,
+    ``,
+    fotosProtocoloCriado?.fotoMotoristaPdv || '',
+    ``,
+    `*Foto Lote:*`,
+    ``,
+    fotosProtocoloCriado?.fotoLoteProduto || '',
+    ...(fotosProtocoloCriado?.fotoAvaria ? [``, `*Foto Avaria:*`, ``, fotosProtocoloCriado.fotoAvaria] : []),
+    ``,
+    `_- Reposi\u00E7\u00E3o Revalle_`
+  ].join('\n');
+
+  const buildWhatsAppLink = () => {
+    const numeroLimpo = whatsappContatoCriado.replace(/\D/g, '');
+    const telefone = numeroLimpo.startsWith('55') ? numeroLimpo : `55${numeroLimpo}`;
+    return `https://wa.me/${telefone}?text=${encodeURIComponent(buildMensagem())}`;
+  };
+
+  const handleCopiarMensagem = () => {
+    navigator.clipboard.writeText(buildMensagem()).then(() => {
+      setMensagemCopiada(true);
+      setTimeout(() => setMensagemCopiada(false), 2500);
+    });
+  };
+
+
+  if (protocoloCriado) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 flex items-center justify-center p-4 safe-area-inset">
+        <Card className="w-full max-w-md text-center shadow-lg">
+          <CardContent className="pt-8 pb-6">
+            <div className="w-16 h-16 mx-auto bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+            </div>
+            <h2 className="text-2xl font-bold text-foreground mb-2">
+              {isOnline ? 'Protocolo Criado!' : 'Salvo Localmente!'}
+            </h2>
+            <p className="text-base text-muted-foreground mb-4">
+              {isOnline 
+                ? 'Seu protocolo foi enviado com sucesso' 
+                : 'O protocolo será enviado quando você tiver conexão'}
+            </p>
+            <div className="bg-muted/50 rounded-lg p-4 mb-6">
+              <p className="text-sm text-muted-foreground">Número do protocolo</p>
+              <p className="text-lg font-mono font-bold text-primary">{numeroProtocolo}</p>
+            </div>
+            <div className="space-y-3">
+              {fotosProtocoloCriado && whatsappContatoCriado && (
+                <a
+                  href={buildWhatsAppLink()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full block"
+                >
+                  <Button className="w-full h-12 text-base bg-green-500 hover:bg-green-600 text-white">
+                    <MessageCircle className="mr-2 h-5 w-5" />
+                    Enviar no WhatsApp do Cliente
+                  </Button>
+                </a>
+              )}
+              <Button
+                variant="outline"
+                onClick={handleCopiarMensagem}
+                className="w-full h-12 text-base"
+              >
+                {mensagemCopiada ? (
+                  <>
+                    <Check className="mr-2 h-5 w-5 text-green-600" />
+                    Mensagem copiada!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="mr-2 h-5 w-5" />
+                    Copiar mensagem
+                  </>
+                )}
+              </Button>
+              <Button onClick={resetForm} className="w-full h-12 text-base">
+                <Plus className="mr-2 h-5 w-5" />
+                Abrir Novo Protocolo
+              </Button>
+              <Button 
+                variant="secondary" 
+                onClick={() => {
+                  resetForm();
+                  setCurrentView('meus-protocolos');
+                }}
+                className="w-full h-12 text-base"
+              >
+                <FileText className="mr-2 h-5 w-5" />
+                Meus Protocolos
+              </Button>
+              <Button variant="outline" onClick={handleLogout} className="w-full h-12 text-base">
+                <LogOut className="mr-2 h-5 w-5" />
+                Sair
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* Camera Capture Modal */}
+      <CameraCapture
+        isOpen={cameraOpen}
+        onClose={() => {
+          setCameraOpen(false);
+          setCameraTarget(null);
+        }}
+        onCapture={handleCameraCapture}
+        title={
+          cameraTarget === 'fotoMotoristaPdv' 
+            ? 'Motorista no PDV' 
+            : cameraTarget === 'fotoLoteProduto' 
+              ? 'Lote do Produto' 
+              : 'Foto da Avaria'
+        }
+      />
+      
+      <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 safe-area-inset overflow-x-hidden">
+      {/* Header com nome, código e unidade */}
+      <MotoristaHeader 
+        motorista={motorista}
+        isOnline={isOnline}
+        pendingCount={pendingCount}
+        onLogout={handleLogout}
+      />
+
+      {/* Welcome banner */}
+      <div className="px-4 pt-3 pb-1">
+        <div className="max-w-xl mx-auto">
+          <p className="text-xs text-muted-foreground">
+            👋 Olá, <span className="font-medium text-foreground">{motorista.nome.split(' ')[0]}</span>! Bom trabalho hoje.
+          </p>
+        </div>
+      </div>
+
+      {/* Resumo do dia */}
+      <DailySummary motorista={motorista} />
+
+      {/* Content Area */}
+      <div className="px-3 pt-2 pb-2 max-w-xl mx-auto">
+
+        {/* Dashboard Grid */}
+        {currentView === 'dashboard' && (
+          <div className="grid grid-cols-2 gap-3 pt-2 pb-4" data-tour="motorista-tabs">
+            <Card 
+              className="col-span-2 cursor-pointer border-border/50 hover:border-primary/60 active:scale-[0.98] transition-all duration-150"
+              onClick={() => setCurrentView('reposicao')}
+            >
+              <CardContent className="flex flex-col items-center justify-center gap-2 py-8">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <PlusCircle className="w-6 h-6 text-primary" />
+                </div>
+                <span className="text-sm font-semibold text-foreground">Reposição</span>
+              </CardContent>
+            </Card>
+            <Card 
+              className="cursor-pointer border-border/50 hover:border-primary/60 active:scale-[0.98] transition-all duration-150"
+              onClick={() => setCurrentView('pos-rota')}
+            >
+              <CardContent className="flex flex-col items-center justify-center gap-2 py-6">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Route className="w-5 h-5 text-primary" />
+                </div>
+                <span className="text-sm font-semibold text-foreground">Pós Rota</span>
+              </CardContent>
+            </Card>
+            <Card 
+              className="cursor-pointer border-border/50 hover:border-primary/60 active:scale-[0.98] transition-all duration-150"
+              onClick={() => setCurrentView('meus-protocolos')}
+            >
+              <CardContent className="flex flex-col items-center justify-center gap-2 py-6">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <FileText className="w-5 h-5 text-primary" />
+                </div>
+                <span className="text-sm font-semibold text-foreground">Meus Protocolos</span>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Back button for sub-views */}
+        {currentView !== 'dashboard' && (
+          <div className="pt-2 pb-3">
+            <button
+              onClick={() => setCurrentView('dashboard')}
+              className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Voltar
+            </button>
+          </div>
+        )}
+
+        {/* Reposição Form */}
+        {currentView === 'reposicao' && (
+          <div className="pb-4 space-y-4" data-tour="motorista-form">
+            {/* Seção: Dados Gerais */}
+            <div className="bg-card rounded-xl shadow-sm border border-border/50">
+              <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-3 border-b border-border/30">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Package className="h-4 w-4 text-primary" />
+                  Dados Gerais
+                </h3>
+              </div>
+              <div className="p-4 space-y-4">
+                <div className="space-y-4">
+                  <div className="space-y-1.5" data-tour="campo-mapa">
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="mapa" className="text-sm font-medium">Mapa *</Label>
+                      {touched.mapa && mapa.trim() && <Check size={14} className="text-emerald-500" />}
+                    </div>
+                    <Input
+                      id="mapa"
+                      value={mapa}
+                      onChange={(e) => setMapa(formatOnlyNumbers(e.target.value))}
+                      onBlur={() => handleBlur('mapa')}
+                      placeholder="Ex: 16431"
+                      className={cn("h-11 text-sm", getInputClassName('mapa', mapa))}
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                    />
+                    {touched.mapa && !mapa.trim() && (
+                      <p className="text-[11px] text-destructive flex items-center gap-1">
+                        <AlertCircle size={11} />
+                        Campo obrigatório
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5" data-tour="campo-pdv">
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="codigoPdv" className="text-sm font-medium">Código PDV *</Label>
+                      {touched.codigoPdv && codigoPdv.trim() && <Check size={14} className="text-emerald-500" />}
+                    </div>
+                    <PdvAutocomplete
+                      value={codigoPdv}
+                      onChange={(value, pdv) => {
+                        setCodigoPdv(value);
+                        setPdvSelecionadoDaLista(!!pdv);
+                      }}
+                      unidade={motorista.unidade}
+                      placeholder="Digite código ou nome do PDV..."
+                      className={getInputClassName('codigoPdv', pdvSelecionadoDaLista ? codigoPdv : '')}
+                      onBlur={() => handleBlur('codigoPdv')}
+                    />
+                    {touched.codigoPdv && !codigoPdv.trim() && (
+                      <p className="text-[11px] text-destructive flex items-center gap-1">
+                        <AlertCircle size={11} />
+                        Campo obrigatório
+                      </p>
+                    )}
+                    {touched.codigoPdv && codigoPdv.trim() && !pdvSelecionadoDaLista && (
+                      <p className="text-[11px] text-amber-500 flex items-center gap-1">
+                        <AlertCircle size={11} />
+                        Selecione um PDV da lista
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5" data-tour="campo-nota-fiscal">
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="notaFiscal" className="text-sm font-medium">Nota Fiscal *</Label>
+                      {touched.notaFiscal && notaFiscal.trim() && <Check size={14} className="text-emerald-500" />}
+                    </div>
+                    <Input
+                      id="notaFiscal"
+                      value={notaFiscal}
+                      onChange={(e) => setNotaFiscal(formatOnlyNumbers(e.target.value))}
+                      onBlur={() => handleBlur('notaFiscal')}
+                      placeholder="Ex: 243631"
+                      className={cn("h-11 text-sm", getInputClassName('notaFiscal', notaFiscal))}
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                    />
+                    {touched.notaFiscal && !notaFiscal.trim() && (
+                      <p className="text-[11px] text-destructive flex items-center gap-1">
+                        <AlertCircle size={11} />
+                        Campo obrigatório
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Seção: Tipo e Causa */}
+            <div className="bg-card rounded-xl shadow-sm border border-border/50 overflow-hidden">
+              <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-3 border-b border-border/30">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-primary" />
+                  Tipo e Causa
+                </h3>
+              </div>
+              <div className="p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" data-tour="campo-tipo-reposicao">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <Label className="text-sm font-medium">Tipo *</Label>
+                      {touched.tipoReposicao && tipoReposicao && <Check size={14} className="text-emerald-500" />}
+                    </div>
+                    <Select 
+                      value={tipoReposicao} 
+                      onValueChange={handleTipoReposicaoChange}
+                    >
+                      <SelectTrigger className={cn(
+                        "h-11 text-sm",
+                        touched.tipoReposicao && tipoReposicao && 'border-emerald-500 focus:ring-emerald-500',
+                        touched.tipoReposicao && !tipoReposicao && 'border-destructive focus:ring-destructive'
+                      )}>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="falta">Falta</SelectItem>
+                        <SelectItem value="inversao">Inversão</SelectItem>
+                        <SelectItem value="avaria">Avaria</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {touched.tipoReposicao && !tipoReposicao && (
+                      <p className="text-[11px] text-destructive flex items-center gap-1">
+                        <AlertCircle size={11} />
+                        Selecione
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <Label className="text-sm font-medium">Causa *</Label>
+                      {touched.causa && causa && <Check size={14} className="text-emerald-500" />}
+                    </div>
+                    <Select 
+                      value={causa} 
+                      onValueChange={(value) => {
+                        setCausa(value);
+                        handleBlur('causa');
+                      }}
+                      disabled={!tipoReposicao}
+                    >
+                      <SelectTrigger className={cn(
+                        "h-11 text-sm",
+                        touched.causa && causa && 'border-emerald-500 focus:ring-emerald-500',
+                        touched.causa && !causa && tipoReposicao && 'border-destructive focus:ring-destructive'
+                      )}>
+                        <SelectValue placeholder={tipoReposicao ? "Selecione" : "Escolha o tipo"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {tipoReposicao && causasPorTipo[tipoReposicao]?.map((c) => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {touched.causa && !causa && tipoReposicao && (
+                      <p className="text-[11px] text-destructive flex items-center gap-1">
+                        <AlertCircle size={11} />
+                        Selecione
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Seção: Produtos */}
+            <div className="bg-card rounded-xl shadow-sm border border-border/50" data-tour="secao-produtos">
+              <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-3 border-b border-border/30 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Package className="h-4 w-4 text-primary" />
+                  Produtos
+                  {tipoReposicao === 'inversao' && (
+                    <span className="text-[11px] text-muted-foreground font-normal ml-0.5">(apenas 1)</span>
+                  )}
+                </h3>
+                {podeAdicionarMultiplos && (
+                  <Button type="button" variant="ghost" size="sm" onClick={addProduto} className="h-8 text-xs text-primary hover:text-primary hover:bg-primary/10">
+                    <Plus className="mr-0.5 h-4 w-4" />
+                    Adicionar
+                  </Button>
+                )}
+              </div>
+              <div className="p-4 space-y-3">
+                  
+                  {produtos.map((produto, index) => {
+                    const isTouched = touched.produtos[index];
+                    const isValid = isProdutoValid(produto);
+                    
+                    return (
+                      <div 
+                        key={index} 
+                        className={cn(
+                          "p-3 bg-muted/30 border-2 rounded-lg space-y-2 transition-colors",
+                          isTouched && isValid && 'border-green-500',
+                          isTouched && !isValid && 'border-red-500',
+                          !isTouched && 'border-border'
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-medium text-foreground">Produto {index + 1}</span>
+                            {isTouched && isValid && <Check size={14} className="text-emerald-500" />}
+                          </div>
+                          {produtos.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeProduto(index)}
+                              className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-medium text-muted-foreground">Produto *</Label>
+                            <ProdutoAutocomplete
+                              value={produto.produto}
+                              onChange={(value, embalagem) => {
+                                updateProduto(index, 'produto', value, embalagem);
+                              }}
+                              onBlur={() => handleProdutoBlur(index)}
+                              className={cn(
+                                isTouched && produto.produto.trim() && 'border-green-500',
+                                isTouched && !produto.produto.trim() && 'border-red-500'
+                              )}
+                            />
+                            {isTouched && !produto.produto.trim() && (
+                              <p className="text-[10px] text-red-500 flex items-center gap-0.5">
+                                <AlertCircle size={10} />
+                                Produto obrigatório
+                              </p>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-[auto_60px_1fr] gap-1.5">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-medium text-muted-foreground">Qtd</Label>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-9 w-9 shrink-0"
+                                  onClick={() => {
+                                    const current = parseInt(produto.quantidade) || 1;
+                                    if (current > 1) {
+                                      updateProduto(index, 'quantidade', String(current - 1));
+                                    }
+                                  }}
+                                  disabled={!produto.quantidade || parseInt(produto.quantidade) <= 1}
+                                >
+                                  <Minus className="h-4 w-4" />
+                                </Button>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={produto.quantidade}
+                                  onChange={(e) => updateProduto(index, 'quantidade', e.target.value)}
+                                  onFocus={(e) => e.target.select()}
+                                  className={cn("h-9 text-sm text-center w-14", !produto.quantidade && "border-destructive")}
+                                  inputMode="numeric"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-9 w-9 shrink-0"
+                                  onClick={() => {
+                                    const current = parseInt(produto.quantidade) || 0;
+                                    updateProduto(index, 'quantidade', String(current + 1));
+                                  }}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-medium text-muted-foreground">Und</Label>
+                              <Select
+                                value={produto.unidade}
+                                onValueChange={(value) => updateProduto(index, 'unidade', value)}
+                              >
+                                <SelectTrigger className="h-9 text-xs px-1.5">
+                                  <SelectValue placeholder="-" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="UND">UND</SelectItem>
+                                  <SelectItem value="CX">CX</SelectItem>
+                                  <SelectItem value="PCT">PCT</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <ValidadeDatePicker
+                              validade={produto.validade}
+                              disabled={tipoReposicao === 'falta'}
+                              onSelect={(date) => updateProduto(index, 'validade', date)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+
+            {/* Seção: Fotos */}
+            <div className="bg-card rounded-xl shadow-sm border border-border/50 overflow-hidden" data-tour="secao-fotos">
+              <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-3 border-b border-border/30">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Camera className="h-4 w-4 text-primary" />
+                  Fotos
+                  <span className="text-[11px] text-destructive font-normal">*</span>
+                </h3>
+              </div>
+              <div className="p-4">
+                {tipoReposicao ? (
+                  <div className="space-y-2">
+                    
+                    <div className="space-y-2">
+                      <PhotoUploadCard
+                        label="Motorista no PDV"
+                        photo={fotoMotoristaPdv}
+                        setPhoto={setFotoMotoristaPdv}
+                        field="fotoMotoristaPdv"
+                      />
+                      <PhotoUploadCard
+                        label="Lote do Produto"
+                        photo={fotoLoteProduto}
+                        setPhoto={setFotoLoteProduto}
+                        field="fotoLoteProduto"
+                      />
+                      {tipoReposicao === 'avaria' && (
+                        <PhotoUploadCard
+                          label="Foto da Avaria"
+                          photo={fotoAvaria}
+                          setPhoto={setFotoAvaria}
+                          field="fotoAvaria"
+                        />
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-6 text-center">
+                    <div className="w-10 h-10 mx-auto bg-muted/50 rounded-full flex items-center justify-center mb-2">
+                      <Camera className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Selecione o tipo de reposição para ver as fotos
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Seção: Contato */}
+            <div className="bg-card rounded-xl shadow-sm border border-border/50 overflow-hidden">
+              <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-3 border-b border-border/30">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-primary" />
+                  Contato
+                </h3>
+              </div>
+              <div className="p-4 space-y-4">
+                    <div className="space-y-1.5" data-tour="campo-whatsapp">
+                      <Label htmlFor="whatsappContato" className="text-sm font-medium">
+                        WhatsApp *
+                      </Label>
+                      <Input
+                        id="whatsappContato"
+                        value={whatsappContato}
+                        onChange={(e) => setWhatsappContato(formatWhatsApp(e.target.value))}
+                        onBlur={() => handleBlur('whatsappContato')}
+                        placeholder="(00) 00000-0000"
+                        maxLength={16}
+                        className={cn(
+                          "h-11 text-sm",
+                          touched.whatsappContato && validateWhatsApp(whatsappContato) && 'border-emerald-500',
+                          touched.whatsappContato && !validateWhatsApp(whatsappContato) && 'border-destructive'
+                        )}
+                        inputMode="tel"
+                      />
+                      {touched.whatsappContato && !validateWhatsApp(whatsappContato) && (
+                        <p className="text-[11px] text-destructive flex items-center gap-1">
+                          <AlertCircle size={11} />
+                          WhatsApp inválido
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="emailContato" className="text-sm font-medium">
+                        E-mail <span className="text-muted-foreground font-normal">(opcional)</span>
+                      </Label>
+                      <Input
+                        id="emailContato"
+                        type="email"
+                        value={emailContato}
+                        onChange={(e) => setEmailContato(e.target.value)}
+                        placeholder="email@exemplo.com"
+                        className={cn(
+                          "h-11 text-sm",
+                          emailContato.trim() && validateEmail(emailContato) && 'border-emerald-500',
+                          emailContato.trim() && !validateEmail(emailContato) && 'border-destructive'
+                        )}
+                        inputMode="email"
+                      />
+                      {emailContato.trim() && !validateEmail(emailContato) && (
+                        <p className="text-[11px] text-destructive flex items-center gap-1">
+                          <AlertCircle size={11} />
+                          E-mail inválido
+                        </p>
+                      )}
+                    </div>
+              </div>
+            </div>
+
+            {/* Seção: Observação */}
+            <div className="bg-card rounded-xl shadow-sm border border-border/50 overflow-hidden">
+              <div className="bg-gradient-to-r from-primary/10 to-primary/5 px-4 py-3 border-b border-border/30">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" />
+                  Observação
+                  <span className="text-[11px] text-muted-foreground font-normal">(opcional)</span>
+                </h3>
+              </div>
+              <div className="p-4">
+                <Textarea
+                  id="observacao"
+                  value={observacao}
+                  onChange={(e) => setObservacao(e.target.value)}
+                  placeholder="Adicione observações relevantes..."
+                  rows={2}
+                  className="text-sm resize-none border-border/50"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Pós-Rota */}
+        {currentView === 'pos-rota' && (
+          <div className="pb-6">
+            <PosRota motorista={motorista} />
+          </div>
+        )}
+
+        {/* Meus Protocolos */}
+        {currentView === 'meus-protocolos' && (
+          <div className="pb-6">
+            <MeusProtocolos motorista={motorista} />
+          </div>
+        )}
+      </div>
+
+      {/* Upload Progress Indicator */}
+      {isUploading && uploadProgress && currentView === 'reposicao' && (
+        <div 
+          className="fixed bottom-20 left-0 right-0 p-4 bg-background border-t border-border"
+          style={{ zIndex: 9998 }}
+        >
+          <div className="max-w-lg mx-auto bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <span className="font-medium text-sm">
+                {uploadProgress.currentRetry 
+                  ? `Tentativa ${uploadProgress.currentRetry.attempt}/3 - ${uploadProgress.currentRetry.foto}...`
+                  : 'Enviando fotos...'}
+              </span>
+            </div>
+            <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-primary transition-all duration-300" 
+                style={{ width: `${getUploadPercentage()}%` }}
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-xs">
+              <div className="flex items-center gap-1">
+                {uploadProgress.fotoMotoristaPdv === 'success' ? (
+                  <CheckCircle className="h-3 w-3 text-green-500" />
+                ) : uploadProgress.fotoMotoristaPdv === 'uploading' || uploadProgress.fotoMotoristaPdv === 'retrying' ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : uploadProgress.fotoMotoristaPdv === 'error' ? (
+                  <X className="h-3 w-3 text-red-500" />
+                ) : (
+                  <div className="h-3 w-3 rounded-full bg-muted" />
+                )}
+                <span>Motorista</span>
+              </div>
+              <div className="flex items-center gap-1">
+                {uploadProgress.fotoLoteProduto === 'success' ? (
+                  <CheckCircle className="h-3 w-3 text-green-500" />
+                ) : uploadProgress.fotoLoteProduto === 'uploading' || uploadProgress.fotoLoteProduto === 'retrying' ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : uploadProgress.fotoLoteProduto === 'error' ? (
+                  <X className="h-3 w-3 text-red-500" />
+                ) : (
+                  <div className="h-3 w-3 rounded-full bg-muted" />
+                )}
+                <span>Lote</span>
+              </div>
+              {tipoReposicao === 'avaria' && (
+                <div className="flex items-center gap-1">
+                  {uploadProgress.fotoAvaria === 'success' ? (
+                    <CheckCircle className="h-3 w-3 text-green-500" />
+                  ) : uploadProgress.fotoAvaria === 'uploading' || uploadProgress.fotoAvaria === 'retrying' ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : uploadProgress.fotoAvaria === 'error' ? (
+                    <X className="h-3 w-3 text-red-500" />
+                  ) : (
+                    <div className="h-3 w-3 rounded-full bg-muted" />
+                  )}
+                  <span>Avaria</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Submit Button - Only show on new protocol tab */}
+      {currentView === 'reposicao' && (
+        <div className="mt-1 mb-6 flex justify-center" data-tour="btn-enviar">
+          <button 
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSubmit();
+            }}
+            disabled={isCompressing || isUploading}
+            className="h-11 px-8 flex items-center justify-center gap-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg active:opacity-80 disabled:opacity-50 transition-colors"
+            style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
+          >
+            {isUploading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Enviando...</span>
+              </>
+            ) : isCompressing ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Processando...</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle className="h-4 w-4" />
+                <span>Enviar Protocolo</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
+      </div>
+    </>
+  );
+}

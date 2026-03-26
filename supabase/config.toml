@@ -1,0 +1,25 @@
+project_id = "miwbbdhfbpmcrfbpulkj"
+
+[functions.enviar-email]
+verify_jwt = false
+
+[functions.create-admin]
+verify_jwt = false
+
+[functions.sla-16-dias-alerta]
+verify_jwt = false
+
+[functions.teste-webhook-criacao]
+verify_jwt = false
+
+[functions.foto-proxy]
+verify_jwt = false
+
+[functions.teste-webhook-sla]
+verify_jwt = false
+
+[functions.motorista-login]
+verify_jwt = false
+
+[functions.rn-login]
+verify_jwt = false

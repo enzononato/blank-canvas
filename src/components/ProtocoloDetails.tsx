@@ -1,0 +1,1770 @@
+import { useState, useEffect, useRef } from 'react';
+import { Protocolo, ObservacaoLog, Produto, User, FotosProtocolo } from '@/types'; // restored
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  CheckCircle,
+  XCircle,
+  Download,
+  User as UserIcon,
+  Building2,
+  Package,
+  Image,
+  MessageSquare,
+  FileText,
+  Clock,
+  ChevronLeft,
+  ChevronRight,
+  Upload,
+  Lock,
+  Pencil,
+  X,
+  Check,
+  Truck,
+  Phone,
+  Camera,
+  Send,
+  RefreshCw,
+  AlertTriangle,
+  Plus,
+  Trash2
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { ProdutoAutocomplete } from '@/components/ProdutoAutocomplete';
+import { useAuditLog } from '@/hooks/useAuditLog';
+import { getCustomPhotoUrl, getDirectStorageUrl } from '@/utils/urlHelpers';
+
+interface ProtocoloDetailsProps {
+  protocolo: Protocolo | null;
+  protocolos: Protocolo[];
+  currentIndex: number;
+  open: boolean;
+  onClose: () => void;
+  onNavigate: (index: number) => void;
+  onUpdateProtocolo?: (protocolo: Protocolo) => void;
+  user?: User | null;
+  canValidate?: boolean;
+  canEditMotorista?: boolean;
+  isConferente?: boolean;
+  isAdmin?: boolean;
+  isDistribuicao?: boolean;
+  isControle?: boolean;
+}
+
+export function ProtocoloDetails({ 
+  protocolo, 
+  protocolos, 
+  currentIndex, 
+  open, 
+  onClose, 
+  onNavigate,
+  onUpdateProtocolo,
+  user,
+  canValidate,
+  canEditMotorista,
+  isConferente = false,
+  isAdmin = false,
+  isDistribuicao = false,
+  isControle = false
+}: ProtocoloDetailsProps) {
+  const [habilitarReenvio, setHabilitarReenvio] = useState(protocolo?.habilitarReenvio || false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [novaObservacao, setNovaObservacao] = useState('');
+  const [mensagemEncerramento, setMensagemEncerramento] = useState('');
+  const [arquivoAnexado, setArquivoAnexado] = useState<File | null>(null);
+  const [editandoWhatsapp, setEditandoWhatsapp] = useState(false);
+  const [whatsappEditado, setWhatsappEditado] = useState(protocolo?.motorista.whatsapp || '');
+  const [clienteTelefone, setClienteTelefone] = useState(protocolo?.clienteTelefone || '');
+  const [clienteTelefoneErro, setClienteTelefoneErro] = useState('');
+  const [enviandoWhatsapp, setEnviandoWhatsapp] = useState(false);
+  const [showReabrirModal, setShowReabrirModal] = useState(false);
+  const [motivoReabertura, setMotivoReabertura] = useState('');
+  const [editandoProdutos, setEditandoProdutos] = useState(false);
+  const [produtosEditados, setProdutosEditados] = useState<Produto[]>(protocolo?.produtos || []);
+
+
+
+  // Função para validar formato de telefone brasileiro
+  const validarTelefone = (telefone: string): boolean => {
+    // Remove tudo que não é número
+    const apenasNumeros = telefone.replace(/\D/g, '');
+    // Aceita formatos: 11999999999 (11 dígitos) ou 1199999999 (10 dígitos)
+    return apenasNumeros.length >= 10 && apenasNumeros.length <= 11;
+  };
+
+  // Função para formatar telefone
+  const formatarTelefone = (valor: string): string => {
+    const apenasNumeros = valor.replace(/\D/g, '');
+    if (apenasNumeros.length <= 2) return apenasNumeros;
+    if (apenasNumeros.length <= 7) return `(${apenasNumeros.slice(0, 2)}) ${apenasNumeros.slice(2)}`;
+    if (apenasNumeros.length <= 11) return `(${apenasNumeros.slice(0, 2)}) ${apenasNumeros.slice(2, 7)}-${apenasNumeros.slice(7)}`;
+    return `(${apenasNumeros.slice(0, 2)}) ${apenasNumeros.slice(2, 7)}-${apenasNumeros.slice(7, 11)}`;
+  };
+
+  // Handler para mudança no campo de telefone
+  const handleTelefoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const valorFormatado = formatarTelefone(e.target.value);
+    setClienteTelefone(valorFormatado);
+    
+    if (valorFormatado && !validarTelefone(valorFormatado)) {
+      setClienteTelefoneErro('Formato inválido. Use: (XX) XXXXX-XXXX');
+    } else {
+      setClienteTelefoneErro('');
+    }
+  };
+
+  // Verifica se o telefone é válido para habilitar envio
+  const telefoneValido = clienteTelefone.trim() && validarTelefone(clienteTelefone);
+
+  const { registrarLog } = useAuditLog();
+  const hasLoggedView = useRef(false);
+
+  // Registrar visualização do protocolo
+  useEffect(() => {
+    if (open && protocolo && user && !hasLoggedView.current) {
+      hasLoggedView.current = true;
+      registrarLog({
+        acao: 'visualizacao',
+        tabela: 'protocolos',
+        registro_id: protocolo.id,
+        registro_dados: { numero: protocolo.numero, motorista: protocolo.motorista.nome },
+        usuario_nome: user.nome,
+        usuario_role: user.nivel,
+        usuario_unidade: user.unidade,
+      });
+    }
+    if (!open) {
+      hasLoggedView.current = false;
+    }
+  }, [open, protocolo, user, registrarLog]);
+
+  useEffect(() => {
+    setProdutosEditados(protocolo?.produtos || []);
+    setEditandoProdutos(false);
+  }, [protocolo]);
+
+  if (!protocolo) return null;
+
+  const canEditProdutos = !!user && !!onUpdateProtocolo && (isAdmin || isDistribuicao || isControle);
+  const isProtocoloEncerrado = protocolo.status === 'encerrado';
+
+  const mostrarAvisoProtocoloEncerrado = () => {
+    toast.error('Não é possível alterar produtos de um protocolo encerrado. Reabra o protocolo para editar.');
+  };
+
+  const formatarProdutoHistorico = (produto: Produto) => (
+    `${produto.codigo || '-'} | ${produto.nome || '-'} | ${produto.quantidade || 0} ${produto.unidade || '-'} | validade: ${produto.validade || '-'}${produto.observacao ? ` | obs: ${produto.observacao}` : ''}`
+  );
+
+  const updateProdutoEditado = (index: number, field: keyof Produto, value: string | number | boolean | undefined) => {
+    setProdutosEditados((prev) => prev.map((produto, i) => i === index ? { ...produto, [field]: value } : produto));
+  };
+
+  const handleProdutoSelecionado = (index: number, value: string, embalagem?: string) => {
+    const [codigo, ...nomeParts] = value.split(' - ');
+    const nome = nomeParts.join(' - ').trim();
+    const digitandoLivre = !nomeParts.length;
+
+    setProdutosEditados((prev) => prev.map((produto, i) => i === index ? {
+      ...produto,
+      codigo: digitandoLivre ? '' : codigo.trim(),
+      nome: digitandoLivre ? value : nome,
+      unidade: embalagem || produto.unidade || 'UND',
+    } : produto));
+  };
+
+  const addProdutoEditado = () => {
+    setProdutosEditados((prev) => ([
+      ...prev,
+      {
+        codigo: '',
+        nome: '',
+        unidade: 'UND',
+        quantidade: 1,
+        validade: '',
+        observacao: ''
+      }
+    ]));
+  };
+
+  const removeProdutoEditado = (index: number) => {
+    setProdutosEditados((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleIniciarEdicaoProdutos = () => {
+    if (isProtocoloEncerrado) {
+      mostrarAvisoProtocoloEncerrado();
+      return;
+    }
+
+    setEditandoProdutos(true);
+  };
+
+  const handleAdicionarPrimeiroProduto = () => {
+    if (isProtocoloEncerrado) {
+      mostrarAvisoProtocoloEncerrado();
+      return;
+    }
+
+    setProdutosEditados([{ codigo: '', nome: '', unidade: 'UND', quantidade: 1, validade: '', observacao: '' }]);
+    setEditandoProdutos(true);
+  };
+
+  const handleCancelarEdicaoProdutos = () => {
+    setProdutosEditados(protocolo.produtos || []);
+    setEditandoProdutos(false);
+  };
+
+  const handleSalvarProdutos = async () => {
+    if (!user || !onUpdateProtocolo) return;
+    if (isProtocoloEncerrado) {
+      mostrarAvisoProtocoloEncerrado();
+      return;
+    }
+
+    const produtosSanitizados = produtosEditados.map((produto) => ({
+      ...produto,
+      codigo: String(produto.codigo || '').trim(),
+      nome: String(produto.nome || '').trim(),
+      unidade: String(produto.unidade || '').trim(),
+      quantidade: Number(produto.quantidade) || 1,
+      validade: String(produto.validade || '').trim(),
+      observacao: String(produto.observacao || '').trim() || undefined,
+    }));
+
+    const possuiInvalido = produtosSanitizados.some((produto) => (
+      !produto.nome ||
+      !['UN', 'CX', 'PCT'].includes(produto.unidade) ||
+      produto.quantidade <= 0
+    ));
+    if (possuiInvalido) {
+      toast.error('Preencha produto, unidade válida (UN, CX ou PCT) e quantidade válida em todos os itens.');
+      return;
+    }
+
+    const antes = (protocolo.produtos || []).map(formatarProdutoHistorico);
+    const depois = produtosSanitizados.map(formatarProdutoHistorico);
+
+    const logEntry: ObservacaoLog = {
+      id: Date.now().toString(),
+      usuarioNome: user.nome,
+      usuarioId: user.id,
+      data: format(new Date(), 'dd/MM/yyyy'),
+      hora: format(new Date(), 'HH:mm'),
+      acao: 'Alterou produtos do protocolo',
+      texto: `Alteração de produtos realizada por ${user.nome}. Antes: ${antes.length ? antes.join(' || ') : 'sem produtos'}. Depois: ${depois.length ? depois.join(' || ') : 'sem produtos'}.`
+    };
+
+    const protocoloAtualizado: Protocolo = {
+      ...protocolo,
+      produtos: produtosSanitizados,
+      observacoesLog: [...(protocolo.observacoesLog || []), logEntry]
+    };
+
+    await registrarLog({
+      acao: 'edicao',
+      tabela: 'protocolos',
+      registro_id: protocolo.id,
+      registro_dados: {
+        numero: protocolo.numero,
+        campo: 'produtos',
+        antes: antes,
+        depois: depois,
+      },
+      usuario_nome: user.nome,
+      usuario_role: user.nivel,
+      usuario_unidade: user.unidade,
+    });
+
+    onUpdateProtocolo(protocoloAtualizado);
+    setEditandoProdutos(false);
+    toast.success('Produtos atualizados com sucesso!');
+  };
+
+  const canGoPrevious = currentIndex > 0;
+  const canGoNext = currentIndex < protocolos.length - 1;
+
+  // Coletar todas as fotos disponíveis (fotos da abertura)
+  const todasFotos: { url: string; label: string }[] = [];
+  
+  // Fotos do array protocolo.fotos
+  if (protocolo.fotos && protocolo.fotos.length > 0) {
+    protocolo.fotos.forEach((foto, index) => {
+      todasFotos.push({ url: foto, label: `Foto ${index + 1}` });
+    });
+  }
+  
+  // Fotos do objeto fotosProtocolo (usa URL direta do Storage para exibição)
+  if (protocolo.fotosProtocolo) {
+    if (protocolo.fotosProtocolo.fotoMotoristaPdv) {
+      todasFotos.push({ url: getDirectStorageUrl(protocolo.fotosProtocolo.fotoMotoristaPdv), label: 'Motorista/PDV' });
+    }
+    if (protocolo.fotosProtocolo.fotoLoteProduto) {
+      todasFotos.push({ url: getDirectStorageUrl(protocolo.fotosProtocolo.fotoLoteProduto), label: 'Lote Produto' });
+    }
+    if (protocolo.fotosProtocolo.fotoAvaria) {
+      todasFotos.push({ url: getDirectStorageUrl(protocolo.fotosProtocolo.fotoAvaria), label: 'Avaria' });
+    }
+  }
+
+  // Coletar fotos de encerramento (apenas para protocolos encerrados) - usa URL direta do Storage
+  const fotosEncerramento: { url: string; label: string }[] = [];
+  if (protocolo.status === 'encerrado') {
+    if (protocolo.fotoNotaFiscalEncerramento) {
+      fotosEncerramento.push({ url: getDirectStorageUrl(protocolo.fotoNotaFiscalEncerramento), label: 'Canhoto Assinado' });
+    }
+    if (protocolo.fotoEntregaMercadoria) {
+      fotosEncerramento.push({ url: getDirectStorageUrl(protocolo.fotoEntregaMercadoria), label: 'Entrega Mercadoria' });
+    }
+    if (protocolo.arquivoEncerramento && (protocolo.arquivoEncerramento.startsWith('http') || protocolo.arquivoEncerramento.includes('supabase'))) {
+      fotosEncerramento.push({ url: getDirectStorageUrl(protocolo.arquivoEncerramento), label: 'Anexo Encerramento' });
+    }
+  }
+
+  // Extrair informações de criação e encerramento do log
+  const getLogCriacao = (): { data: string; hora: string; usuarioNome?: string } | null => {
+    const logCriacao = protocolo.observacoesLog?.find(l => l.acao === 'Abriu protocolo');
+    if (logCriacao) {
+      return { data: logCriacao.data, hora: logCriacao.hora, usuarioNome: logCriacao.usuarioNome };
+    }
+    return { data: protocolo.data, hora: protocolo.hora };
+  };
+
+  const getLogEncerramento = (): { data: string; hora: string; usuarioNome: string; texto: string; tipo?: string; motoristaNome?: string } | null => {
+    const logEncerramento = protocolo.observacoesLog?.find(l => l.acao === 'Encerrou o protocolo');
+    if (logEncerramento) {
+      return {
+        data: logEncerramento.data,
+        hora: logEncerramento.hora,
+        usuarioNome: logEncerramento.usuarioNome,
+        texto: logEncerramento.texto,
+        tipo: protocolo.encerradoPorTipo,
+        motoristaNome: protocolo.encerradoPorMotoristaNome
+      };
+    }
+    return null;
+  };
+
+  const infoCriacao = getLogCriacao();
+  const infoEncerramento = getLogEncerramento();
+
+  // Calcular o SLA (tempo total entre criação e encerramento)
+  const calcularSLA = (): { dias: number; horas: number; minutos: number; textoCompleto: string } | null => {
+    if (protocolo.status !== 'encerrado' || !infoCriacao || !infoEncerramento) return null;
+    
+    try {
+      // Parsear data e hora de criação (formato dd/MM/yyyy HH:mm)
+      const [diaCriacao, mesCriacao, anoCriacao] = infoCriacao.data.split('/').map(Number);
+      const [horaCriacao, minCriacao] = infoCriacao.hora.split(':').map(Number);
+      const dataCriacao = new Date(anoCriacao, mesCriacao - 1, diaCriacao, horaCriacao, minCriacao);
+      
+      // Parsear data e hora de encerramento
+      const [diaEnc, mesEnc, anoEnc] = infoEncerramento.data.split('/').map(Number);
+      const [horaEnc, minEnc] = infoEncerramento.hora.split(':').map(Number);
+      const dataEncerramento = new Date(anoEnc, mesEnc - 1, diaEnc, horaEnc, minEnc);
+      
+      // Calcular diferença em milissegundos
+      const diffMs = dataEncerramento.getTime() - dataCriacao.getTime();
+      if (diffMs < 0) return null;
+      
+      // Converter para dias, horas e minutos
+      const diffMinutos = Math.floor(diffMs / (1000 * 60));
+      const dias = Math.floor(diffMinutos / (60 * 24));
+      const horas = Math.floor((diffMinutos % (60 * 24)) / 60);
+      const minutos = diffMinutos % 60;
+      
+      // Criar texto legível
+      const partes: string[] = [];
+      if (dias > 0) partes.push(`${dias} dia${dias > 1 ? 's' : ''}`);
+      if (horas > 0) partes.push(`${horas} hora${horas > 1 ? 's' : ''}`);
+      if (minutos > 0 || partes.length === 0) partes.push(`${minutos} minuto${minutos !== 1 ? 's' : ''}`);
+      
+      return { dias, horas, minutos, textoCompleto: partes.join(', ') };
+    } catch (e) {
+      console.error('Erro ao calcular SLA:', e);
+      return null;
+    }
+  };
+
+  const slaInfo = calcularSLA();
+
+  const handleSalvarObservacao = () => {
+    if (!novaObservacao.trim() || !user || !onUpdateProtocolo) return;
+    
+    const novoLog: ObservacaoLog = {
+      id: Date.now().toString(),
+      usuarioNome: user.nome,
+      usuarioId: user.id,
+      data: format(new Date(), 'dd/MM/yyyy'),
+      hora: format(new Date(), 'HH:mm'),
+      acao: 'Adicionou observação',
+      texto: novaObservacao
+    };
+    
+    const protocoloAtualizado = {
+      ...protocolo,
+      observacoesLog: [...(protocolo.observacoesLog || []), novoLog]
+    };
+    
+    onUpdateProtocolo(protocoloAtualizado);
+    setNovaObservacao('');
+    toast.success('Observação salva!');
+  };
+
+  const handleAnexarArquivo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const isPdf = file.type === 'application/pdf';
+      const isImage = file.type.startsWith('image/');
+      if (isPdf || isImage) {
+        setArquivoAnexado(file);
+      } else {
+        toast.error('Por favor, selecione um arquivo PDF ou imagem');
+      }
+    }
+  };
+
+  const handleEncerrarProtocolo = async () => {
+    if (!onUpdateProtocolo || !user) return;
+    
+    let arquivoUrl: string | null = null;
+    
+    // Upload do arquivo para o storage se existir
+    if (arquivoAnexado) {
+      try {
+        const fileExt = arquivoAnexado.name.split('.').pop();
+        const fileName = `encerramento_${protocolo.numero}_${Date.now()}.${fileExt}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('fotos-protocolos')
+          .upload(fileName, arquivoAnexado);
+        
+        if (uploadError) {
+          console.error('Erro ao fazer upload:', uploadError);
+          toast.error('Erro ao fazer upload do arquivo');
+          return;
+        }
+        
+        // Obter URL pública
+        const { data: publicUrlData } = supabase.storage
+          .from('fotos-protocolos')
+          .getPublicUrl(fileName);
+        
+        arquivoUrl = publicUrlData.publicUrl;
+      } catch (error) {
+        console.error('Erro no upload:', error);
+        toast.error('Erro ao fazer upload do arquivo');
+        return;
+      }
+    }
+    
+    const dataEncerramento = format(new Date(), 'dd/MM/yyyy');
+    const horaEncerramento = format(new Date(), 'HH:mm');
+    
+    const protocoloAtualizado: Protocolo = {
+      ...protocolo,
+      status: 'encerrado' as const,
+      mensagemEncerramento,
+      arquivoEncerramento: arquivoUrl || arquivoAnexado?.name,
+      observacoesLog: [
+        ...(protocolo.observacoesLog || []),
+        {
+          id: Date.now().toString(),
+          usuarioNome: user.nome,
+          usuarioId: user.id,
+          data: dataEncerramento,
+          hora: horaEncerramento,
+          acao: 'Encerrou o protocolo',
+          texto: mensagemEncerramento || 'Protocolo encerrado'
+        }
+      ]
+    };
+    
+    // Enviar webhook de encerramento
+    try {
+      const webhookPayload = {
+        tipo: 'encerramento',
+        numero: protocolo.numero,
+        data: protocolo.data,
+        hora: protocolo.hora,
+        dataEncerramento,
+        horaEncerramento,
+        status: 'encerrado',
+        mapa: protocolo.mapa,
+        notaFiscal: protocolo.notaFiscal,
+        codigoPdv: protocolo.codigoPdv,
+        tipoReposicao: protocolo.tipoReposicao,
+        causa: protocolo.causa,
+        motoristaNome: protocolo.motorista.nome,
+        motoristaCodigo: protocolo.motorista.codigo,
+        motoristaWhatsapp: protocolo.motorista.whatsapp,
+        motoristaEmail: protocolo.motorista.email,
+        unidade: protocolo.unidadeNome || protocolo.motorista.unidade,
+        clienteTelefone: protocolo.clienteTelefone,
+        contatoEmail: protocolo.contatoEmail,
+        contatoWhatsapp: protocolo.contatoWhatsapp,
+        observacaoGeral: protocolo.observacaoGeral,
+        produtos: protocolo.produtos,
+        fotos: {
+          fotoMotoristaPdv: getCustomPhotoUrl(protocolo.fotosProtocolo?.fotoMotoristaPdv || ''),
+          fotoLoteProduto: getCustomPhotoUrl(protocolo.fotosProtocolo?.fotoLoteProduto || ''),
+          fotoAvaria: getCustomPhotoUrl(protocolo.fotosProtocolo?.fotoAvaria || '')
+        },
+        mensagemEncerramento: mensagemEncerramento || '',
+        arquivoEncerramentoUrl: arquivoUrl,
+        usuarioEncerramento: {
+          nome: user.nome,
+          id: user.id
+        }
+      };
+      
+      fetch('https://n8n.revalle.com.br/webhook/reposicaowpp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(webhookPayload),
+      }).catch(error => {
+        console.error('Erro ao enviar webhook de encerramento:', error);
+      });
+    } catch (error) {
+      console.error('Erro ao preparar webhook:', error);
+    }
+    
+    onUpdateProtocolo(protocoloAtualizado);
+    toast.success('Protocolo encerrado com sucesso!');
+    onClose();
+  };
+
+  const handleConfirmarValidacao = async () => {
+    if (!onUpdateProtocolo) return;
+    
+    const protocoloAtualizado: Protocolo = {
+      ...protocolo,
+      validacao: !protocolo.validacao,
+      observacoesLog: [
+        ...(protocolo.observacoesLog || []),
+        {
+          id: Date.now().toString(),
+          usuarioNome: user?.nome || '',
+          usuarioId: user?.id || '',
+          data: format(new Date(), 'dd/MM/yyyy'),
+          hora: format(new Date(), 'HH:mm'),
+          acao: protocolo.validacao ? 'Removeu validação' : 'Confirmou validação',
+          texto: protocolo.validacao ? 'Validação removida' : 'Protocolo validado'
+        }
+      ]
+    };
+    
+    try {
+      await onUpdateProtocolo(protocoloAtualizado);
+      const novaValidacao = !protocolo.validacao;
+      await registrarLog({
+        acao: novaValidacao ? 'validacao' : 'edicao',
+        tabela: 'protocolos',
+        registro_id: protocolo.id,
+        registro_dados: { numero: protocolo.numero, validacao: novaValidacao },
+        usuario_nome: user?.nome || '',
+        usuario_role: user?.nivel,
+        usuario_unidade: user?.unidade,
+      });
+      toast.success(protocolo.validacao ? 'Validação removida!' : 'Protocolo validado!');
+    } catch (error) {
+      console.error('Erro ao atualizar validação:', error);
+      toast.error('Erro ao atualizar validação. Tente novamente.');
+    }
+  };
+
+  const handleReenviarWhatsapp = async (tipo: 'lancar' | 'encerrar') => {
+    if (!onUpdateProtocolo) return;
+
+    setEnviandoWhatsapp(true);
+
+    try {
+      let webhookPayload: Record<string, unknown>;
+      
+      // Usar o número informado no campo de reenvio (clienteTelefone) se disponível
+      const numeroContatoReenvio = clienteTelefone || protocolo.clienteTelefone || protocolo.contatoWhatsapp || '';
+      
+      if (tipo === 'lancar') {
+        // Mesmo JSON enviado na criação do protocolo
+        webhookPayload = {
+          tipo: 'criacao_protocolo',
+          numero: protocolo.numero,
+          data: protocolo.data,
+          hora: protocolo.hora,
+          mapa: protocolo.mapa || '',
+          codigoPdv: protocolo.codigoPdv || '',
+          notaFiscal: protocolo.notaFiscal || '',
+          motoristaNome: protocolo.motorista.nome,
+          motoristaCodigo: protocolo.motorista.codigo,
+          motoristaWhatsapp: protocolo.motorista.whatsapp || '',
+          motoristaEmail: protocolo.motorista.email || '',
+          unidade: protocolo.unidadeNome || protocolo.motorista.unidade || '',
+          tipoReposicao: (protocolo.tipoReposicao || '').toUpperCase(),
+          causa: protocolo.causa || '',
+          produtos: protocolo.produtos || [],
+          fotos: {
+            fotoMotoristaPdv: protocolo.fotosProtocolo?.fotoMotoristaPdv || '',
+            fotoLoteProduto: protocolo.fotosProtocolo?.fotoLoteProduto || '',
+            fotoAvaria: protocolo.fotosProtocolo?.fotoAvaria || ''
+          },
+          whatsappContato: numeroContatoReenvio,
+          emailContato: protocolo.contatoEmail || '',
+          observacaoGeral: protocolo.observacaoGeral || ''
+        };
+      } else {
+        // Mesmo JSON enviado no encerramento do protocolo
+        // Buscar data/hora de encerramento do log
+        const logEncerramento = protocolo.observacoesLog?.find(l => l.acao === 'Encerrou o protocolo');
+        
+        webhookPayload = {
+          tipo: 'encerramento',
+          numero: protocolo.numero,
+          data: protocolo.data,
+          hora: protocolo.hora,
+          dataEncerramento: logEncerramento?.data || format(new Date(), 'dd/MM/yyyy'),
+          horaEncerramento: logEncerramento?.hora || format(new Date(), 'HH:mm'),
+          status: 'encerrado',
+          mapa: protocolo.mapa,
+          notaFiscal: protocolo.notaFiscal,
+          codigoPdv: protocolo.codigoPdv,
+          tipoReposicao: protocolo.tipoReposicao,
+          causa: protocolo.causa,
+          motoristaNome: protocolo.motorista.nome,
+          motoristaCodigo: protocolo.motorista.codigo,
+          motoristaWhatsapp: protocolo.motorista.whatsapp,
+          motoristaEmail: protocolo.motorista.email,
+          unidade: protocolo.unidadeNome || protocolo.motorista.unidade,
+          clienteTelefone: numeroContatoReenvio,
+          contatoEmail: protocolo.contatoEmail,
+          contatoWhatsapp: numeroContatoReenvio,
+          observacaoGeral: protocolo.observacaoGeral,
+          produtos: protocolo.produtos,
+          fotos: {
+            fotoMotoristaPdv: getCustomPhotoUrl(protocolo.fotosProtocolo?.fotoMotoristaPdv || ''),
+            fotoLoteProduto: getCustomPhotoUrl(protocolo.fotosProtocolo?.fotoLoteProduto || ''),
+            fotoAvaria: getCustomPhotoUrl(protocolo.fotosProtocolo?.fotoAvaria || '')
+          },
+          mensagemEncerramento: protocolo.mensagemEncerramento || '',
+          arquivoEncerramentoUrl: protocolo.arquivoEncerramento,
+          usuarioEncerramento: logEncerramento ? {
+            nome: logEncerramento.usuarioNome,
+            id: logEncerramento.usuarioId
+          } : {
+            nome: user?.nome || 'Sistema',
+            id: user?.id || ''
+          }
+        };
+      }
+
+      const response = await fetch('https://n8n.revalle.com.br/webhook/reposicaowpp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(webhookPayload),
+      });
+
+      if (response.ok) {
+        const statusField = tipo === 'lancar' ? 'enviadoLancarStatus' : 'enviadoEncerrarStatus';
+        const erroField = tipo === 'lancar' ? 'enviadoLancarErro' : 'enviadoEncerrarErro';
+        const enviadoField = tipo === 'lancar' ? 'enviadoLancar' : 'enviadoEncerrar';
+        
+        const protocoloAtualizado: Protocolo = {
+          ...protocolo,
+          [enviadoField]: true,
+          [statusField]: 'enviado',
+          [erroField]: undefined,
+          clienteTelefone: clienteTelefone || protocolo.clienteTelefone,
+          contatoWhatsapp: clienteTelefone || protocolo.contatoWhatsapp,
+          observacoesLog: [
+            ...(protocolo.observacoesLog || []),
+            {
+              id: Date.now().toString(),
+              usuarioNome: user?.nome || 'Sistema',
+              usuarioId: user?.id || '',
+              data: format(new Date(), 'dd/MM/yyyy'),
+              hora: format(new Date(), 'HH:mm'),
+              acao: tipo === 'lancar' ? 'Reenviou mensagem de lançamento' : 'Reenviou mensagem de encerramento',
+              texto: `Mensagem reenviada para o número ${clienteTelefone || protocolo.clienteTelefone || 'não informado'}`
+            }
+          ]
+        };
+        
+        onUpdateProtocolo(protocoloAtualizado);
+        await registrarLog({
+          acao: 'reenvio',
+          tabela: 'protocolos',
+          registro_id: protocolo.id,
+          registro_dados: { numero: protocolo.numero, tipo_reenvio: tipo, telefone: clienteTelefone || protocolo.clienteTelefone },
+          usuario_nome: user?.nome || '',
+          usuario_role: user?.nivel,
+          usuario_unidade: user?.unidade,
+        });
+        setHabilitarReenvio(false);
+        toast.success(`Mensagem de ${tipo === 'lancar' ? 'lançamento' : 'encerramento'} reenviada com sucesso!`);
+      } else {
+        throw new Error(`Erro ao enviar webhook: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Erro ao reenviar:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao enviar mensagem';
+      toast.error(`Falha ao reenviar: ${errorMessage}`);
+    } finally {
+      setEnviandoWhatsapp(false);
+    }
+  };
+
+  const handleDownload = () => {
+    const content = `
+DETALHES DO PROTOCOLO
+=====================
+
+PROTOCOLO: ${protocolo.numero}
+DATA: ${protocolo.data}
+HORA: ${protocolo.hora}
+STATUS: ${protocolo.status.toUpperCase()}
+
+TIPO DE REPOSIÇÃO: ${protocolo.tipoReposicao || '-'}
+CAUSA: ${protocolo.causa || '-'}
+UNIDADE: ${protocolo.unidadeNome || '-'} (ID ${protocolo.unidadeId || '-'})
+
+DADOS DO MOTORISTA
+------------------
+Motorista: ${protocolo.motorista.codigo}
+Nome: ${protocolo.motorista.nome}
+E-mail: ${protocolo.motorista.email || '-'}
+WhatsApp: ${protocolo.motorista.whatsapp || '-'}
+
+INFORMAÇÕES DO CLIENTE
+----------------------
+Código PDV: ${protocolo.codigoPdv || '-'}
+MAPA: ${protocolo.mapa || '-'}
+Nota Fiscal: ${protocolo.notaFiscal || '-'}
+
+OBSERVAÇÃO
+----------
+${protocolo.observacaoGeral || '-'}
+
+PRODUTOS RECEBIDOS
+------------------
+${protocolo.produtos?.map(p => 
+  `${p.codigo} | ${p.nome} | ${p.unidade} | Qtd: ${p.quantidade} | Val: ${p.validade} | Obs: ${p.observacao || '-'}`
+).join('\n') || 'Nenhum produto'}
+
+HISTÓRICO DE OBSERVAÇÕES
+------------------------
+${protocolo.observacoesLog?.map(o => 
+  `${o.data} ${o.hora} - ${o.usuarioNome} - ${o.acao}: ${o.texto}`
+).join('\n') || 'Nenhum histórico'}
+
+STATUS DO PROTOCOLO
+-------------------
+Validado: ${protocolo.validacao ? 'Sim' : 'Não'}
+Lançado: ${protocolo.lancado ? 'Sim' : 'Não'}
+    `.trim();
+
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${protocolo.numero}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto p-0">
+          {/* Header com gradiente */}
+          <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-4 border-b">
+            <DialogHeader className="flex flex-row items-center justify-between">
+              <div>
+                <DialogTitle className="font-heading text-xl flex items-center gap-2 text-primary">
+                  <div className="p-1.5 bg-primary/10 rounded-lg">
+                    <FileText className="text-primary" size={20} />
+                  </div>
+                  Protocolo {protocolo.numero}
+                </DialogTitle>
+                <p className="text-xs text-muted-foreground mt-0.5 ml-9">
+                  {protocolo.data} às {protocolo.hora}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-0.5 bg-background border rounded-lg px-1.5 py-0.5 shadow-sm">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => onNavigate(currentIndex - 1)}
+                    disabled={!canGoPrevious}
+                    className="h-6 w-6 p-0"
+                  >
+                    <ChevronLeft size={16} />
+                  </Button>
+                  <span className="text-xs text-muted-foreground px-1.5 font-medium">
+                    {currentIndex + 1} de {protocolos.length}
+                  </span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => onNavigate(currentIndex + 1)}
+                    disabled={!canGoNext}
+                    className="h-6 w-6 p-0"
+                  >
+                    <ChevronRight size={16} />
+                  </Button>
+                </div>
+                <Button onClick={handleDownload} variant="outline" size="sm" className="h-7 gap-1.5 text-xs shadow-sm">
+                  <Download size={14} />
+                  Download
+                </Button>
+              </div>
+            </DialogHeader>
+          </div>
+
+          <div className="space-y-4 p-4">
+            {/* Status do Protocolo */}
+            <div className="bg-card rounded-xl p-4 border shadow-sm">
+              <h3 className="font-bold text-xs text-foreground mb-3 flex items-center gap-2 uppercase tracking-wide">
+                <CheckCircle size={16} className="text-primary" />
+                Status do Protocolo
+              </h3>
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <StatusBadge status={protocolo.status} />
+                </div>
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
+                  protocolo.validacao 
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' 
+                    : 'bg-muted text-muted-foreground'
+                }`}>
+                  {protocolo.validacao ? (
+                    <CheckCircle className="text-emerald-500" size={16} />
+                  ) : (
+                    <XCircle className="text-muted-foreground" size={16} />
+                  )}
+                  <span>Validado: {protocolo.validacao ? 'Sim' : 'Não'}</span>
+                </div>
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
+                  protocolo.lancado 
+                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' 
+                    : 'bg-muted text-muted-foreground'
+                }`}>
+                  {protocolo.lancado ? (
+                    <CheckCircle className="text-blue-500" size={16} />
+                  ) : (
+                    <XCircle className="text-muted-foreground" size={16} />
+                  )}
+                  <span>Lançado: {protocolo.lancado ? 'Sim' : 'Não'}</span>
+                </div>
+                
+                {/* Botão de Validação para Conferente */}
+                {canValidate && protocolo.status !== 'encerrado' && onUpdateProtocolo && (
+                  <Button 
+                    variant={protocolo.validacao ? "outline" : "default"}
+                    size="sm"
+                    onClick={handleConfirmarValidacao}
+                    className="ml-auto"
+                  >
+                    {protocolo.validacao ? 'Remover Validação' : 'Confirmar Validação'}
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Informações Gerais - Card unificado com duas colunas */}
+            <div className="bg-card rounded-xl p-4 border shadow-sm">
+              <h3 className="font-bold text-xs text-foreground mb-3 flex items-center gap-2 uppercase tracking-wide">
+                <Clock size={16} className="text-primary" />
+                INFORMAÇÕES GERAIS
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+                {/* Coluna Esquerda */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-foreground uppercase">PROTOCOLO:</span>
+                    <span className="text-xs text-foreground">{protocolo.numero}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-foreground uppercase">DATA:</span>
+                    <span className="text-xs text-foreground">{protocolo.data}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-foreground uppercase">MOTORISTA:</span>
+                    <span className="text-xs text-foreground">{protocolo.motorista.codigo} - {protocolo.motorista.nome}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-foreground uppercase">UNIDADE:</span>
+                    <span className="text-xs text-foreground">{protocolo.motorista.unidade || '-'}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-foreground uppercase">MAPA:</span>
+                    <span className="text-xs text-foreground">{protocolo.mapa || '-'}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-foreground uppercase">CÓDIGO PDV:</span>
+                    <span className="text-xs text-foreground">{protocolo.codigoPdv || '-'}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-foreground uppercase">NOTA FISCAL:</span>
+                    <span className="text-xs text-foreground">{protocolo.notaFiscal || '-'}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-foreground uppercase">CAUSA:</span>
+                    <span className="text-xs text-foreground">{protocolo.causa || '-'}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-foreground uppercase">TIPO DE REPOSIÇÃO:</span>
+                    <span className="text-xs text-foreground">{protocolo.tipoReposicao || '-'}</span>
+                  </div>
+                </div>
+
+                {/* Coluna Direita */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-foreground uppercase">STATUS:</span>
+                    <span className="text-xs text-foreground uppercase">{protocolo.status}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-foreground uppercase">HORA:</span>
+                    <span className="text-xs text-foreground">{protocolo.hora}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-foreground uppercase">UNIDADE:</span>
+                    <span className="text-xs text-foreground">{protocolo.motorista.unidade || '-'}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-foreground uppercase">WHATSAPP CONTATO:</span>
+                    {canEditMotorista && !editandoWhatsapp ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-foreground font-medium text-primary">{protocolo.contatoWhatsapp || '-'}</span>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-5 w-5 p-0 text-primary hover:text-primary/80 hover:bg-primary/10"
+                          onClick={() => {
+                            setWhatsappEditado(protocolo.contatoWhatsapp || protocolo.motorista.whatsapp || '');
+                            setEditandoWhatsapp(true);
+                          }}
+                        >
+                          <Pencil size={12} />
+                        </Button>
+                      </div>
+                    ) : canEditMotorista && editandoWhatsapp ? (
+                      <div className="flex items-center gap-1.5">
+                        <Input 
+                          value={whatsappEditado}
+                          onChange={(e) => setWhatsappEditado(e.target.value)}
+                          placeholder="(XX) XXXXX-XXXX"
+                          className="h-6 w-32 text-xs"
+                        />
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="h-6 px-2 text-xs"
+                          onClick={() => {
+                            if (!onUpdateProtocolo || !user) return;
+                            
+                            const protocoloAtualizado = {
+                              ...protocolo,
+                              contatoWhatsapp: whatsappEditado,
+                              motorista: {
+                                ...protocolo.motorista,
+                                whatsapp: whatsappEditado
+                              },
+                              observacoesLog: [
+                                ...(protocolo.observacoesLog || []),
+                                {
+                                  id: Date.now().toString(),
+                                  usuarioNome: user.nome,
+                                  usuarioId: user.id,
+                                  data: format(new Date(), 'dd/MM/yyyy'),
+                                  hora: format(new Date(), 'HH:mm'),
+                                  acao: 'Editou WhatsApp',
+                                  texto: `WhatsApp alterado para ${whatsappEditado || '(vazio)'}`
+                                }
+                              ]
+                            };
+                            
+                            onUpdateProtocolo(protocoloAtualizado);
+                            setEditandoWhatsapp(false);
+                            toast.success('WhatsApp atualizado!');
+                          }}
+                        >
+                          Salvar
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 px-1.5"
+                          onClick={() => setEditandoWhatsapp(false)}
+                        >
+                          <X size={12} />
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-foreground font-medium text-primary">{protocolo.contatoWhatsapp || '-'}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-foreground uppercase">E-MAIL CONTATO:</span>
+                    <span className="text-xs text-foreground">{protocolo.contatoEmail || '-'}</span>
+                  </div>
+                  {/* Switch de Habilitar Reenvio - Apenas para Admin e Distribuição */}
+                  {!isConferente && (
+                    <div className="flex items-center gap-2">
+                      <Switch 
+                        checked={habilitarReenvio} 
+                        onCheckedChange={setHabilitarReenvio}
+                        className="scale-75"
+                      />
+                      <span className="text-xs font-bold text-foreground uppercase">HABILITAR REENVIO?</span>
+                    </div>
+                  )}
+                  
+                  {/* Campo de telefone do cliente e botões de reenvio - Apenas para Admin e Distribuição */}
+                  {!isConferente && habilitarReenvio && (
+                    <div className="mt-2 p-3 bg-primary/5 border border-primary/20 rounded-lg space-y-2">
+                      <div className="flex items-center gap-1.5">
+                        <Phone size={14} className="text-primary" />
+                        <span className="text-xs font-bold text-foreground uppercase">Telefone do Cliente:</span>
+                      </div>
+                      <div className="space-y-1">
+                        <Input 
+                          value={clienteTelefone}
+                          onChange={handleTelefoneChange}
+                          placeholder="(XX) XXXXX-XXXX"
+                          className={`max-w-[200px] h-7 text-xs ${clienteTelefoneErro ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                          maxLength={16}
+                        />
+                        {clienteTelefoneErro && (
+                          <p className="text-xs text-destructive">{clienteTelefoneErro}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-2 pt-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleReenviarWhatsapp('lancar')}
+                          disabled={enviandoWhatsapp || !telefoneValido}
+                          className="gap-1.5 h-7 text-xs"
+                        >
+                          {enviandoWhatsapp ? (
+                            <RefreshCw size={14} className="animate-spin" />
+                          ) : (
+                            <Send size={14} />
+                          )}
+                          Reenviar Lançamento
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="default"
+                          onClick={() => handleReenviarWhatsapp('encerrar')}
+                          disabled={enviandoWhatsapp || !telefoneValido}
+                          className="gap-1.5 h-7 text-xs"
+                        >
+                          {enviandoWhatsapp ? (
+                            <RefreshCw size={12} className="animate-spin" />
+                          ) : (
+                            <Send size={12} />
+                          )}
+                          Reenviar Encerramento
+                        </Button>
+                      </div>
+                      
+                      {/* Histórico de reenvios */}
+                      {(() => {
+                        const historicoReenvios = protocolo.observacoesLog?.filter(
+                          log => log.acao?.includes('Reenviou mensagem')
+                        ) || [];
+                        
+                        if (historicoReenvios.length === 0) return null;
+                        
+                        return (
+                          <div className="mt-3 pt-3 border-t border-primary/20">
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <Clock size={12} className="text-muted-foreground" />
+                              <span className="text-xs font-bold text-muted-foreground uppercase">Histórico de Reenvios:</span>
+                            </div>
+                            <div className="space-y-1.5 max-h-24 overflow-y-auto">
+                              {historicoReenvios.map((log, idx) => (
+                                <div key={idx} className="flex items-center gap-2 text-xs bg-background/50 rounded px-2 py-1">
+                                  <span className="text-muted-foreground">{log.data} {log.hora}</span>
+                                  <span className="text-foreground">{log.texto}</span>
+                                  <span className="text-muted-foreground">por {log.usuarioNome}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-xs font-bold text-foreground uppercase">OBSERVAÇÃO:</span>
+                    <span className="text-xs text-foreground">{protocolo.observacaoGeral || '-'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Produtos Recebidos - Estilo limpo como na imagem */}
+            <div className="bg-background rounded-xl p-4 border border-border shadow-sm">
+              <h3 className="font-bold text-xs text-foreground mb-3 flex items-center gap-1.5 uppercase">
+                <Package size={16} className="text-muted-foreground" />
+                Produtos Recebidos
+              </h3>
+              {protocolo.produtos && protocolo.produtos.length > 0 ? (
+                <>
+                  {/* Resumo de entrega */}
+                  {(() => {
+                    const totalProdutos = protocolo.produtos.length;
+                    const entregues = protocolo.produtos.filter(p => p.entregue).length;
+                    if (entregues > 0) {
+                      return (
+                        <div className="mb-3 flex items-center gap-2 text-xs">
+                          <div className={cn(
+                            "flex items-center gap-1.5 px-2.5 py-1 rounded-full font-medium",
+                            entregues === totalProdutos
+                              ? "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400"
+                              : "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400"
+                          )}>
+                            {entregues === totalProdutos ? <CheckCircle size={12} /> : <Clock size={12} />}
+                            {entregues} de {totalProdutos} produtos entregues
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <p className="text-xs text-muted-foreground">
+                      {canEditProdutos
+                        ? isProtocoloEncerrado
+                          ? 'Protocolo encerrado: para alterar produtos, reabra o protocolo primeiro.'
+                          : 'Perfis de controle, distribuição e admin podem editar todos os campos dos produtos.'
+                        : 'Lista de produtos registrada no protocolo.'}
+                    </p>
+                    {canEditProdutos && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        {editandoProdutos ? (
+                          <>
+                            <Button type="button" variant="outline" size="sm" onClick={handleCancelarEdicaoProdutos}>
+                              Cancelar
+                            </Button>
+                            <Button type="button" size="sm" onClick={handleSalvarProdutos} disabled={isProtocoloEncerrado}>
+                              <Check size={14} className="mr-1" />
+                              Salvar produtos
+                            </Button>
+                          </>
+                        ) : (
+                          <Button type="button" variant="outline" size="sm" onClick={handleIniciarEdicaoProdutos} disabled={isProtocoloEncerrado}>
+                            <Pencil size={14} className="mr-1" />
+                            Editar produtos
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="overflow-x-auto border border-slate-300 dark:border-slate-600 rounded-lg">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-slate-100 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700">
+                          <th className="text-left px-2.5 py-2 font-semibold text-slate-600 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700">Código</th>
+                          <th className="text-left px-2.5 py-2 font-semibold text-slate-600 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700">Produto</th>
+                          <th className="text-left px-2.5 py-2 font-semibold text-slate-600 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700">Unidade</th>
+                          <th className="text-center px-2.5 py-2 font-semibold text-slate-600 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700">Qtd</th>
+                          <th className="text-left px-2.5 py-2 font-semibold text-slate-600 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700">Validade</th>
+                          <th className="text-left px-2.5 py-2 font-semibold text-slate-600 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700">Observação</th>
+                          <th className="text-center px-2.5 py-2 font-semibold text-slate-600 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700">Status</th>
+                          <th className="text-center px-2.5 py-2 font-semibold text-slate-600 dark:text-slate-300">Fotos</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(editandoProdutos ? produtosEditados : protocolo.produtos).map((produto, index) => (
+                          <tr key={index} className="border-b border-slate-200 dark:border-slate-700 last:border-b-0 hover:bg-slate-50 dark:hover:bg-slate-800/30 align-top">
+                            <td className="px-2.5 py-1.5 text-foreground border-r border-slate-200 dark:border-slate-700">
+                              {editandoProdutos ? (
+                                <div className="min-w-40">
+                                  <ProdutoAutocomplete
+                                    value={produto.codigo && produto.nome ? `${produto.codigo} - ${produto.nome}` : produto.nome || ''}
+                                    onChange={(value, embalagem) => handleProdutoSelecionado(index, value, embalagem)}
+                                    className="h-8 text-sm"
+                                  />
+                                </div>
+                              ) : produto.codigo}
+                            </td>
+                            <td className="px-2.5 py-1.5 text-foreground border-r border-slate-200 dark:border-slate-700">
+                              {editandoProdutos ? (
+                                <span className="text-xs text-muted-foreground">{produto.nome || 'Selecione um produto na lista'}</span>
+                              ) : produto.nome}
+                            </td>
+                            <td className="px-2.5 py-1.5 text-foreground border-r border-slate-200 dark:border-slate-700">
+                              {editandoProdutos ? (
+                                <Select
+                                  value={['UN', 'CX', 'PCT'].includes(produto.unidade) ? produto.unidade : 'UN'}
+                                  onValueChange={(value) => updateProdutoEditado(index, 'unidade', value)}
+                                >
+                                  <SelectTrigger className="h-8 min-w-20">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="UN">UN</SelectItem>
+                                    <SelectItem value="CX">CX</SelectItem>
+                                    <SelectItem value="PCT">PCT</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : produto.unidade}
+                            </td>
+                            <td className="px-2.5 py-1.5 text-center text-foreground border-r border-slate-200 dark:border-slate-700">
+                              {editandoProdutos ? (
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={produto.quantidade}
+                                  onChange={(e) => updateProdutoEditado(index, 'quantidade', parseInt(e.target.value, 10) || 1)}
+                                  className="h-8 min-w-16 text-center"
+                                />
+                              ) : produto.quantidade}
+                            </td>
+                            <td className="px-2.5 py-1.5 text-foreground border-r border-slate-200 dark:border-slate-700">
+                              {editandoProdutos ? (
+                                <Input
+                                  value={produto.validade}
+                                  onChange={(e) => updateProdutoEditado(index, 'validade', e.target.value)}
+                                  className="h-8 min-w-28"
+                                  placeholder="dd/mm/aaaa"
+                                />
+                              ) : produto.validade}
+                            </td>
+                            <td className="px-2.5 py-1.5 text-muted-foreground border-r border-slate-200 dark:border-slate-700">
+                              {editandoProdutos ? (
+                                <Input
+                                  value={produto.observacao || ''}
+                                  onChange={(e) => updateProdutoEditado(index, 'observacao', e.target.value)}
+                                  className="h-8 min-w-40"
+                                />
+                              ) : (produto.observacao || '')}
+                            </td>
+                            <td className="px-2.5 py-1.5 text-center border-r border-slate-200 dark:border-slate-700">
+                              {editandoProdutos ? (
+                                <div className="flex items-center justify-center gap-1">
+                                  <Button
+                                    type="button"
+                                    variant={produto.entregue ? 'default' : 'outline'}
+                                    size="sm"
+                                    className="h-8"
+                                    onClick={() => updateProdutoEditado(index, 'entregue', !produto.entregue)}
+                                  >
+                                    {produto.entregue ? 'Entregue' : 'Pendente'}
+                                  </Button>
+                                  {produto.entregue && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-destructive"
+                                      onClick={() => removeProdutoEditado(index)}
+                                      title="Remover produto"
+                                    >
+                                      <Trash2 size={14} />
+                                    </Button>
+                                  )}
+                                </div>
+                              ) : produto.entregue ? (
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-500/20 px-1.5 py-0.5 rounded-full">
+                                    <CheckCircle size={10} />
+                                    Entregue
+                                  </span>
+                                  {produto.dataEntrega && (
+                                    <span className="text-[9px] text-muted-foreground">{produto.dataEntrega}</span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-500/20 px-1.5 py-0.5 rounded-full">
+                                  <Clock size={10} />
+                                  Pendente
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-2.5 py-1.5 text-center">
+                              {editandoProdutos ? (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive"
+                                  onClick={() => removeProdutoEditado(index)}
+                                  title="Remover produto"
+                                >
+                                  <Trash2 size={14} />
+                                </Button>
+                              ) : (() => {
+                                const fotoCanhoto = produto.fotoCanhoto || (produto.entregue ? protocolo?.fotoNotaFiscalEncerramento : null);
+                                const fotoMerc = produto.fotoMercadoria || (produto.entregue ? protocolo?.fotoEntregaMercadoria : null);
+                                if (produto.entregue && (fotoCanhoto || fotoMerc)) {
+                                  return (
+                                    <div className="flex items-center justify-center gap-1.5">
+                                      {fotoCanhoto && (
+                                        <button
+                                          onClick={() => setSelectedImage(getDirectStorageUrl(fotoCanhoto))}
+                                          className="group relative w-8 h-8 rounded overflow-hidden border border-border hover:border-primary transition-all hover:scale-110 shadow-sm"
+                                          title="Canhoto Assinado"
+                                        >
+                                          <img
+                                            src={getDirectStorageUrl(fotoCanhoto)}
+                                            alt="Canhoto"
+                                            className="w-full h-full object-cover"
+                                          />
+                                        </button>
+                                      )}
+                                      {fotoMerc && (
+                                        <button
+                                          onClick={() => setSelectedImage(getDirectStorageUrl(fotoMerc))}
+                                          className="group relative w-8 h-8 rounded overflow-hidden border border-border hover:border-primary transition-all hover:scale-110 shadow-sm"
+                                          title="Mercadoria Entregue"
+                                        >
+                                          <img
+                                            src={getDirectStorageUrl(fotoMerc)}
+                                            alt="Mercadoria"
+                                            className="w-full h-full object-cover"
+                                          />
+                                        </button>
+                                      )}
+                                    </div>
+                                  );
+                                }
+                                return <span className="text-[9px] text-muted-foreground">—</span>;
+                              })()}
+                            </td>
+                          </tr>
+                        ))}
+                        {editandoProdutos && (
+                          <tr>
+                            <td colSpan={8} className="px-2.5 py-2 text-left">
+                              <Button type="button" variant="outline" size="sm" onClick={addProdutoEditado} disabled={isProtocoloEncerrado}>
+                                <Plus size={14} className="mr-1" />
+                                Adicionar produto
+                              </Button>
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground italic">Nenhum produto registrado</p>
+                  {canEditProdutos && (
+                    <Button type="button" variant="outline" size="sm" onClick={handleAdicionarPrimeiroProduto} disabled={isProtocoloEncerrado}>
+                      <Plus size={14} className="mr-1" />
+                      Adicionar primeiro produto
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Fotos Enviadas (Abertura) */}
+            {todasFotos.length > 0 && (
+              <div className="bg-card rounded-xl p-4 border shadow-sm">
+                <h3 className="font-bold text-xs text-foreground mb-3 flex items-center gap-1.5 uppercase tracking-wide">
+                  <Camera size={16} className="text-primary" />
+                  FOTOS DA ABERTURA
+                </h3>
+                <div className="flex flex-wrap gap-3">
+                  {todasFotos.map((foto, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedImage(foto.url)}
+                      className="group relative w-28 h-28 rounded-lg overflow-hidden border border-border hover:border-primary transition-all hover:scale-105 shadow-sm"
+                    >
+                      <img 
+                        src={foto.url} 
+                        alt={foto.label} 
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute bottom-0 left-0 right-0 bg-background/90 dark:bg-background/80 text-[10px] text-center py-1 font-bold text-foreground uppercase">
+                        {foto.label}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Fotos de Encerramento - Apenas para protocolos encerrados */}
+            {protocolo.status === 'encerrado' && fotosEncerramento.length > 0 && (
+              <div className="bg-card rounded-xl p-4 border shadow-sm border-emerald-200 dark:border-emerald-800">
+                <h3 className="font-bold text-xs text-foreground mb-3 flex items-center gap-1.5 uppercase tracking-wide">
+                  <Camera size={16} className="text-emerald-600" />
+                  FOTOS DO ENCERRAMENTO
+                </h3>
+                <div className="flex flex-wrap gap-3">
+                  {fotosEncerramento.map((foto, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedImage(foto.url)}
+                      className="group relative w-28 h-28 rounded-lg overflow-hidden border border-emerald-200 dark:border-emerald-700 hover:border-emerald-500 transition-all hover:scale-105 shadow-sm"
+                    >
+                      <img 
+                        src={foto.url} 
+                        alt={foto.label} 
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute bottom-0 left-0 right-0 bg-emerald-100/90 dark:bg-emerald-900/80 text-[10px] text-center py-1 font-bold text-emerald-700 dark:text-emerald-300 uppercase">
+                        {foto.label}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Histórico Completo - Todas as ações */}
+            <div className="bg-card rounded-xl p-4 border shadow-sm">
+              <h3 className="font-bold text-xs text-foreground mb-3 flex items-center gap-1.5 uppercase tracking-wide">
+                <MessageSquare size={16} className="text-primary" />
+                Histórico Completo
+              </h3>
+              
+              {/* Log de todas as ações - com fallback para criação */}
+              {(() => {
+                // Criar log de fallback para criação se não existir
+                const hasAbrirLog = protocolo.observacoesLog?.some(l => l.acao === 'Abriu protocolo' || l.acao === 'Criou protocolo');
+                const logsExibir = [...(protocolo.observacoesLog || [])];
+                
+                // Se não tem log de abertura, adicionar um baseado nos dados do protocolo
+                if (!hasAbrirLog) {
+                  logsExibir.unshift({
+                    id: 'criacao-fallback',
+                    usuarioNome: protocolo.motorista.nome,
+                    usuarioId: protocolo.motorista.id,
+                    data: protocolo.data,
+                    hora: protocolo.hora,
+                    acao: 'Abriu protocolo',
+                    texto: `Protocolo criado pelo motorista ${protocolo.motorista.codigo} - ${protocolo.motorista.nome}`
+                  });
+                }
+                
+                return logsExibir.length > 0 ? (
+                  <div className="space-y-2 mb-3">
+                    {[...logsExibir].reverse().map((log) => {
+                      // Determinar cor e ícone baseado na ação
+                      const getActionStyle = (acao: string) => {
+                        if (acao.includes('Encerrou')) return { bg: 'bg-emerald-500', bgLight: 'bg-emerald-100 dark:bg-emerald-900/30' };
+                        if (acao.includes('Reabriu')) return { bg: 'bg-orange-500', bgLight: 'bg-orange-100 dark:bg-orange-900/30' };
+                        if (acao.includes('validação') || acao.includes('Validou')) return { bg: 'bg-purple-500', bgLight: 'bg-purple-100 dark:bg-purple-900/30' };
+                        if (acao.includes('lançado') || acao.includes('Lançou')) return { bg: 'bg-amber-500', bgLight: 'bg-amber-100 dark:bg-amber-900/30' };
+                        if (acao.includes('Abriu') || acao.includes('Criou')) return { bg: 'bg-blue-500', bgLight: 'bg-blue-100 dark:bg-blue-900/30' };
+                        if (acao.includes('Reenviou')) return { bg: 'bg-cyan-500', bgLight: 'bg-cyan-100 dark:bg-cyan-900/30' };
+                        if (acao.includes('Editou')) return { bg: 'bg-slate-500', bgLight: 'bg-slate-100 dark:bg-slate-900/30' };
+                        return { bg: 'bg-primary', bgLight: 'bg-muted/30' };
+                      };
+                      
+                      const style = getActionStyle(log.acao);
+                      
+                      return (
+                        <div key={log.id} className={`flex gap-2 p-2.5 ${style.bgLight} rounded-lg hover:opacity-90 transition-opacity`}>
+                          <div className={`w-7 h-7 rounded-full ${style.bg} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
+                            {log.usuarioNome.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                              <span className="font-semibold text-foreground">{log.usuarioNome}</span>
+                              <span className="text-muted-foreground">•</span>
+                              <span className="text-muted-foreground">{log.data} às {log.hora}</span>
+                              <span className={`px-1.5 py-0.5 ${style.bg} text-white rounded-full text-[10px] font-medium`}>
+                                {log.acao}
+                              </span>
+                            </div>
+                            <p className="text-xs mt-0.5 text-foreground">{log.texto}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">Nenhum registro no histórico</p>
+                );
+              })()}
+              
+              {/* Campo para nova observação */}
+              {user && onUpdateProtocolo && (
+                <div className="space-y-2 pt-2 border-t">
+                  <Textarea
+                    placeholder="Digite sua observação..."
+                    value={novaObservacao}
+                    onChange={(e) => setNovaObservacao(e.target.value)}
+                    className="min-h-[60px] text-xs"
+                  />
+                  <Button size="sm" onClick={handleSalvarObservacao} disabled={!novaObservacao.trim()} className="h-7 text-xs">
+                    Salvar observação
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Seção de Encerramento */}
+            <div className="bg-card rounded-xl p-4 border shadow-sm">
+              <h3 className="font-bold text-xs text-foreground mb-3 flex items-center gap-1.5 uppercase tracking-wide">
+                <Lock size={14} className="text-primary" />
+                Encerramento
+              </h3>
+              
+              {protocolo.status !== 'encerrado' ? (
+                (isAdmin || isDistribuicao || isControle) && user && onUpdateProtocolo ? (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Mensagem para o usuário</label>
+                      <Textarea
+                        placeholder="Escreva uma mensagem de encerramento..."
+                        value={mensagemEncerramento}
+                        onChange={(e) => setMensagemEncerramento(e.target.value)}
+                        className="min-h-[80px]"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">Anexar arquivo (PDF ou Imagem)</label>
+                      <div className="flex items-center gap-3">
+                        <Input 
+                          type="file" 
+                          accept=".pdf,image/*"
+                          onChange={handleAnexarArquivo}
+                          className="max-w-xs"
+                        />
+                        {arquivoAnexado && (
+                          <span className="text-xs text-emerald-600 flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded-full">
+                            <CheckCircle size={14} />
+                            {arquivoAnexado.name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <Button 
+                      variant="destructive"
+                      onClick={handleEncerrarProtocolo}
+                      className="w-full shadow-lg"
+                    >
+                      <Lock size={16} className="mr-2" />
+                      Encerrar Protocolo
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">Você não tem permissão para encerrar este protocolo.</p>
+                )
+              ) : (
+              <div className="text-sm space-y-3 p-4 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg">
+                  <p className="text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-2">
+                    <CheckCircle size={18} />
+                    Este protocolo foi encerrado.
+                  </p>
+                  
+                  {/* Resumo do SLA */}
+                  {slaInfo && (
+                    <div className="bg-white dark:bg-slate-800/50 rounded-lg p-3 border border-emerald-200 dark:border-emerald-700">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Clock size={16} className="text-emerald-600" />
+                        <span className="font-semibold text-emerald-700 dark:text-emerald-400 text-xs uppercase tracking-wide">Tempo Total (SLA)</span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                          {slaInfo.textoCompleto}
+                        </div>
+                        {slaInfo.dias > 16 && (
+                          <span className="bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-1 rounded-full text-[10px] font-bold flex items-center gap-1">
+                            <AlertTriangle size={12} />
+                            SLA Excedido
+                          </span>
+                        )}
+                        {slaInfo.dias <= 16 && slaInfo.dias > 10 && (
+                          <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-2 py-1 rounded-full text-[10px] font-bold">
+                            Atenção
+                          </span>
+                        )}
+                        {slaInfo.dias <= 10 && (
+                          <span className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-2 py-1 rounded-full text-[10px] font-bold">
+                            Dentro do SLA
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-2">
+                        <span className="font-medium">Abertura:</span> {infoCriacao?.data} às {infoCriacao?.hora} → <span className="font-medium">Encerramento:</span> {infoEncerramento?.data} às {infoEncerramento?.hora}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {protocolo.mensagemEncerramento && (
+                    <p className="text-foreground"><strong>Mensagem:</strong> {protocolo.mensagemEncerramento}</p>
+                  )}
+                  {protocolo.arquivoEncerramento && (
+                    <p className="text-foreground flex items-center gap-2">
+                      <FileText size={14} className="text-muted-foreground" />
+                      <strong>Arquivo anexado:</strong> {protocolo.arquivoEncerramento}
+                    </p>
+                  )}
+                  
+                  {/* Botão de Reabertura - apenas Admin, Distribuição e Controle */}
+                  {(isAdmin || isDistribuicao || isControle) && (
+                    <Button 
+                      variant="outline"
+                      onClick={() => setShowReabrirModal(true)}
+                      className="w-full mt-3 border-amber-500 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                    >
+                      <RefreshCw size={16} className="mr-2" />
+                      Reabrir Protocolo
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Image Preview Modal */}
+      <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+        <DialogContent className="max-w-3xl p-2">
+          {selectedImage && (
+            <img 
+              src={selectedImage} 
+              alt="Foto ampliada" 
+              className="w-full h-auto rounded-lg"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+
+      {/* Modal de Reabertura */}
+      <Dialog open={showReabrirModal} onOpenChange={setShowReabrirModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="text-amber-500" />
+              Reabrir Protocolo {protocolo.numero}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Motivo da Reabertura <span className="text-destructive">*</span>
+              </label>
+              <Textarea
+                placeholder="Explique o motivo pelo qual este protocolo está sendo reaberto..."
+                value={motivoReabertura}
+                onChange={(e) => setMotivoReabertura(e.target.value)}
+                className="min-h-[100px]"
+              />
+              <p className="text-xs text-muted-foreground">
+                Este motivo será registrado no histórico do protocolo.
+              </p>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => {
+                setShowReabrirModal(false);
+                setMotivoReabertura('');
+              }}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={async () => {
+                  if (!motivoReabertura.trim()) {
+                    toast.error('Informe o motivo da reabertura');
+                    return;
+                  }
+                  if (!onUpdateProtocolo || !user) return;
+
+                  const logEntry: ObservacaoLog = {
+                    id: Date.now().toString(),
+                    usuarioNome: user.nome,
+                    usuarioId: user.id,
+                    data: format(new Date(), 'dd/MM/yyyy'),
+                    hora: format(new Date(), 'HH:mm'),
+                    acao: 'Reabriu o protocolo',
+                    texto: motivoReabertura
+                  };
+
+                  const protocoloAtualizado: Protocolo = {
+                    ...protocolo,
+                    status: 'aberto',
+                    observacoesLog: [...(protocolo.observacoesLog || []), logEntry]
+                  };
+
+                  await registrarLog({
+                    acao: 'reabertura',
+                    tabela: 'protocolos',
+                    registro_id: protocolo.id,
+                    registro_dados: { numero: protocolo.numero, motivo: motivoReabertura },
+                    usuario_nome: user.nome,
+                    usuario_role: user.nivel,
+                    usuario_unidade: user.unidade,
+                  });
+
+                  // WhatsApp de reabertura é enviado via webhook n8n
+
+                  // Enviar notificação de reabertura via Email
+                  if (protocolo.contatoEmail) {
+                    try {
+                      const emailResponse = await supabase.functions.invoke('enviar-email', {
+                        body: {
+                          tipo: 'reabrir',
+                          numero: protocolo.numero,
+                          data: format(new Date(), 'dd/MM/yyyy'),
+                          hora: format(new Date(), 'HH:mm'),
+                          mapa: protocolo.mapa,
+                          codigoPdv: protocolo.codigoPdv,
+                          notaFiscal: protocolo.notaFiscal,
+                          motoristaNome: protocolo.motorista.nome,
+                          unidadeNome: protocolo.motorista.unidade,
+                          clienteEmail: protocolo.contatoEmail,
+                          motivoReabertura: motivoReabertura,
+                          usuarioReabertura: user.nome,
+                        }
+                      });
+                      if (emailResponse.error) {
+                        console.error('Erro ao enviar email de reabertura:', emailResponse.error);
+                      }
+                    } catch (err) {
+                      console.error('Erro ao enviar email de reabertura:', err);
+                    }
+                  }
+
+                  onUpdateProtocolo(protocoloAtualizado);
+                  setShowReabrirModal(false);
+                  setMotivoReabertura('');
+                  toast.success('Protocolo reaberto com sucesso!');
+                }}
+                disabled={!motivoReabertura.trim()}
+                className="bg-amber-500 hover:bg-amber-600 text-white"
+              >
+                Confirmar Reabertura
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}

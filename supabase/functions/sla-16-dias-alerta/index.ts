@@ -1,0 +1,201 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// Função para calcular a diferença em dias entre duas datas
+function calcularDiferencaDias(dataProtocolo: string): number {
+  // data vem no formato DD/MM/YYYY
+  const parts = dataProtocolo.split('/');
+  if (parts.length !== 3) return 0;
+  
+  const dia = parseInt(parts[0], 10);
+  const mes = parseInt(parts[1], 10) - 1; // Mês é 0-indexado
+  const ano = parseInt(parts[2], 10);
+  
+  const dataProtocoloDate = new Date(ano, mes, dia);
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  dataProtocoloDate.setHours(0, 0, 0, 0);
+  
+  const diffTime = hoje.getTime() - dataProtocoloDate.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  
+  return diffDays;
+}
+
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    console.log('Iniciando verificação de protocolos com SLA de 16 dias...');
+
+    // Buscar protocolos abertos ou em andamento
+    const { data: protocolos, error: fetchError } = await supabase
+      .from('protocolos')
+      .select('*')
+      .in('status', ['aberto', 'em_andamento'])
+      .eq('oculto', false);
+
+    if (fetchError) {
+      console.error('Erro ao buscar protocolos:', fetchError);
+      throw fetchError;
+    }
+
+    // Buscar todos os gestores para mapear unidades
+    const { data: gestores, error: gestoresError } = await supabase
+      .from('gestores')
+      .select('*');
+
+    if (gestoresError) {
+      console.error('Erro ao buscar gestores:', gestoresError);
+      throw gestoresError;
+    }
+
+    console.log(`Encontrados ${protocolos?.length || 0} protocolos para verificar`);
+    console.log(`Encontrados ${gestores?.length || 0} gestores cadastrados`);
+
+    const protocolosAlertados: string[] = [];
+    const erros: string[] = [];
+
+    for (const protocolo of protocolos || []) {
+      const diasSla = calcularDiferencaDias(protocolo.data);
+      
+      console.log(`Protocolo ${protocolo.numero}: ${diasSla} dias de SLA`);
+
+      // Verificar se deve enviar alerta:
+      // - Primeiro alerta aos 16 dias
+      // - Depois a cada 7 dias (23, 30, 37, etc.)
+      const ultimoAlerta = protocolo.ultimo_alerta_sla || 0;
+      const deveEnviarAlerta = diasSla >= 16 && (
+        // Nunca recebeu alerta e já tem 16+ dias
+        (ultimoAlerta === 0 && diasSla >= 16) ||
+        // Já recebeu alerta e passou 7+ dias desde o último
+        (ultimoAlerta > 0 && diasSla >= ultimoAlerta + 7)
+      );
+
+      if (deveEnviarAlerta) {
+        console.log(`Protocolo ${protocolo.numero} atingiu ${diasSla} dias de SLA. Último alerta: ${ultimoAlerta} dias. Enviando webhook...`);
+
+        // Buscar gestor responsável pela unidade do protocolo
+        const unidadeProtocolo = protocolo.motorista_unidade?.toUpperCase().trim() || '';
+        const gestorResponsavel = gestores?.find(g => 
+          g.unidades.some((u: string) => u.toUpperCase().trim() === unidadeProtocolo)
+        );
+
+        console.log(`Unidade do protocolo: ${unidadeProtocolo}`);
+        console.log(`Gestor encontrado: ${gestorResponsavel?.nome || 'Nenhum'}`);
+
+        // Montar o payload do webhook (mesmo formato da criação)
+        const webhookPayload = {
+          tipo: 'alerta_sla_16_dias',
+          numero: protocolo.numero,
+          data: protocolo.data,
+          hora: protocolo.hora,
+          mapa: protocolo.mapa || '',
+          codigoPdv: protocolo.codigo_pdv || '',
+          notaFiscal: protocolo.nota_fiscal || '',
+          motoristaNome: protocolo.motorista_nome,
+          motoristaCodigo: protocolo.motorista_codigo || '',
+          motoristaWhatsapp: protocolo.motorista_whatsapp || '',
+          motoristaEmail: protocolo.motorista_email || '',
+          unidade: protocolo.motorista_unidade || '',
+          tipoReposicao: protocolo.tipo_reposicao || '',
+          causa: protocolo.causa || '',
+          produtos: protocolo.produtos || [],
+          fotos: protocolo.fotos_protocolo || {},
+          whatsappContato: protocolo.contato_whatsapp || '',
+          emailContato: protocolo.contato_email || '',
+          observacaoGeral: protocolo.observacao_geral || '',
+          // Campos adicionais do alerta SLA
+          alertaSla: true,
+          diasAberto: diasSla,
+          ultimoAlertaEm: ultimoAlerta,
+          motivoEnvio: ultimoAlerta === 0 ? 'SLA_16_DIAS' : 'SLA_RECORRENTE_7_DIAS',
+          mensagemAlerta: ultimoAlerta === 0 
+            ? `Protocolo ${protocolo.numero} atingiu ${diasSla} dias sem encerramento (SLA 16 dias)`
+            : `Protocolo ${protocolo.numero} está há ${diasSla} dias sem encerramento (alerta recorrente a cada 7 dias)`,
+          // Dados do gestor responsável pela unidade
+          gestorNome: gestorResponsavel?.nome || '',
+          gestorWhatsapp: gestorResponsavel?.whatsapp || '',
+        };
+
+        try {
+          // Enviar para o webhook
+          const webhookResponse = await fetch('https://n8n.revalle.com.br/webhook/reposicaowpp', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(webhookPayload),
+          });
+
+          if (webhookResponse.ok) {
+            console.log(`Webhook enviado com sucesso para protocolo ${protocolo.numero}`);
+
+            // Atualizar o protocolo para marcar que o alerta foi enviado
+            const { error: updateError } = await supabase
+              .from('protocolos')
+              .update({
+                sla_16_enviado: true,
+                sla_16_enviado_at: new Date().toISOString(),
+                ultimo_alerta_sla: diasSla
+              })
+              .eq('id', protocolo.id);
+
+            if (updateError) {
+              console.error(`Erro ao atualizar protocolo ${protocolo.numero}:`, updateError);
+              erros.push(`Erro ao atualizar ${protocolo.numero}: ${updateError.message}`);
+            } else {
+              protocolosAlertados.push(protocolo.numero);
+            }
+          } else {
+            const errorText = await webhookResponse.text();
+            console.error(`Erro ao enviar webhook para ${protocolo.numero}:`, webhookResponse.status, errorText);
+            erros.push(`Webhook falhou para ${protocolo.numero}: ${webhookResponse.status}`);
+          }
+        } catch (webhookError: unknown) {
+          const errorMessage = webhookError instanceof Error ? webhookError.message : String(webhookError);
+          console.error(`Erro ao enviar webhook para ${protocolo.numero}:`, webhookError);
+          erros.push(`Erro webhook ${protocolo.numero}: ${errorMessage}`);
+        }
+      }
+    }
+
+    const resultado = {
+      sucesso: true,
+      protocolosVerificados: protocolos?.length || 0,
+      protocolosAlertados,
+      quantidadeAlertados: protocolosAlertados.length,
+      erros,
+      executadoEm: new Date().toISOString()
+    };
+
+    console.log('Resultado da verificação:', resultado);
+
+    return new Response(JSON.stringify(resultado), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('Erro na função sla-16-dias-alerta:', error);
+    return new Response(JSON.stringify({ 
+      sucesso: false, 
+      error: errorMessage 
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+});
