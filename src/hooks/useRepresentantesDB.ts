@@ -18,17 +18,12 @@ export function useRepresentantesDB() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('representantes_public' as any)
-        .select('id,nome,cpf,unidade,created_at')
-        .order('nome', { ascending: true })
-        .limit(500);
+        .select('*')
+        .order('nome', { ascending: true });
       if (error) throw error;
       return data as unknown as RepresentanteDB[];
     },
     staleTime: 1000 * 60 * 5,
-    gcTime: 1000 * 60 * 30,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    retry: 1,
   });
 
   const addMutation = useMutation({

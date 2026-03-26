@@ -55,9 +55,8 @@ export function useMotoristasDB() {
       // Usar a view pública que não expõe senha/cpf
       const { data, error: fetchError } = await supabase
         .from('motoristas_public' as any)
-        .select('id,nome,codigo,cpf,data_nascimento,unidade,funcao,setor,whatsapp,email,created_at')
-        .order('nome', { ascending: true })
-        .limit(500);
+        .select('*')
+        .order('nome', { ascending: true });
 
       if (fetchError) throw fetchError;
       return (data as unknown as MotoristaPublicDB[]).map(dbToMotorista);
@@ -198,7 +197,7 @@ export function useMotoristasDB() {
   const getMotoristaByCode = async (codigo: string): Promise<Motorista | null> => {
     const { data, error: fetchError } = await supabase
       .from('motoristas_public' as any)
-      .select('id,nome,codigo,cpf,data_nascimento,unidade,funcao,setor,whatsapp,email,created_at')
+      .select('*')
       .eq('codigo', codigo)
       .single();
 

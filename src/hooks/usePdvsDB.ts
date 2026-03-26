@@ -159,7 +159,9 @@ export function usePdvsDB() {
   };
 
   const getTotalPdvsPorUnidade = async (): Promise<Record<string, number>> => {
-    const { data, error } = await supabase.rpc('count_pdvs_por_unidade');
+    const { data, error } = await supabase
+      .from('pdvs')
+      .select('unidade');
 
     if (error) {
       console.error('Erro ao contar PDVs por unidade:', error);
@@ -167,9 +169,9 @@ export function usePdvsDB() {
     }
 
     const contagem: Record<string, number> = {};
-    (data || []).forEach((pdv: { unidade: string | null; total: number | null }) => {
+    data?.forEach(pdv => {
       const unidade = pdv.unidade || 'SEM_UNIDADE';
-      contagem[unidade] = Number(pdv.total || 0);
+      contagem[unidade] = (contagem[unidade] || 0) + 1;
     });
 
     return contagem;
