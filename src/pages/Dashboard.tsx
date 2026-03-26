@@ -255,8 +255,7 @@ export default function Dashboard() {
       // Encerrados: protocolos encerrados nesse dia (pela data do log)
       const encerradosNoDia = protocolosFiltrados.filter(p => {
         if (p.status !== 'encerrado') return false;
-        const logEnc = (p.observacoesLog as ObservacaoLog[] | undefined)?.find(l => l.acao?.startsWith('Encerrou o protocolo'));
-        const dataEnc = logEnc?.data || null;
+        const dataEnc = getDataEncerramentoFromLog(p.observacoesLog);
         return dataEnc === dateStr;
       }).length;
       
@@ -401,15 +400,31 @@ export default function Dashboard() {
     return nome.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
   };
 
+  const normalizeObservacoesLog = (observacoesLog?: unknown): ObservacaoLog[] => {
+    if (Array.isArray(observacoesLog)) return observacoesLog as ObservacaoLog[];
+
+    if (typeof observacoesLog === 'string') {
+      try {
+        const parsed = JSON.parse(observacoesLog);
+        return Array.isArray(parsed) ? (parsed as ObservacaoLog[]) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    return [];
+  };
+
   // Função para extrair data de encerramento do log
-  const getDataEncerramentoFromLog = (observacoesLog?: ObservacaoLog[]): string | null => {
-    const logEncerramento = observacoesLog?.find(l => l.acao?.startsWith('Encerrou o protocolo'));
+  const getDataEncerramentoFromLog = (observacoesLog?: unknown): string | null => {
+    const logs = normalizeObservacoesLog(observacoesLog);
+    const logEncerramento = logs.find(l => l?.acao?.startsWith('Encerrou o protocolo'));
     return logEncerramento?.data || null;
   };
 
   // Função para cor do SLA - padronizada com página Protocolos (dias)
   // Função para cor do SLA - usando campo data (DD/MM/YYYY) para consistência com backend
-  const calcularSlaDias = (dataStr: string, status?: string, observacoesLog?: ObservacaoLog[]): number => {
+  const calcularSlaDias = (dataStr: string, status?: string, observacoesLog?: unknown): number => {
     try {
       const dataProtocolo = parse(dataStr, 'dd/MM/yyyy', new Date());
       
@@ -457,8 +472,9 @@ export default function Dashboard() {
   };
 
   // Verificar se protocolo foi reaberto
-  const foiReaberto = (observacoesLog?: ObservacaoLog[]): boolean => {
-    return !!observacoesLog?.some(log => log.acao === 'Reabriu o protocolo');
+  const foiReaberto = (observacoesLog?: unknown): boolean => {
+    const logs = normalizeObservacoesLog(observacoesLog);
+    return logs.some(log => log?.acao === 'Reabriu o protocolo');
   };
 
   // Cor para avatar baseado no nome
