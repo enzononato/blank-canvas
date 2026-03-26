@@ -24,23 +24,36 @@ export function MultiSelectUnidade({
 }: MultiSelectUnidadeProps) {
   const [open, setOpen] = useState(false);
 
-  const noneSelected = selected.length === 0;
-  const allSelected = unidades.length > 0 && selected.length === unidades.length;
+  const allSelected = selected.length === 0 || selected.length === unidades.length;
 
   const handleToggleAll = () => {
-    onChange([]);
+    if (allSelected) {
+      // Se todas estão selecionadas, não faz nada (ou limpa)
+      // Vazio = todas, então se clicar em "Todas" quando já está tudo, mantém
+      onChange([]);
+    } else {
+      onChange([]);
+    }
   };
 
   const handleToggle = (nome: string) => {
     if (selected.includes(nome)) {
-      onChange(selected.filter(s => s !== nome));
-      return;
+      const newSelected = selected.filter(s => s !== nome);
+      onChange(newSelected);
+    } else {
+      const newSelected = [...selected, nome];
+      // Se selecionou todas, volta para array vazio (= todas)
+      if (newSelected.length === unidades.length) {
+        onChange([]);
+      } else {
+        onChange(newSelected);
+      }
     }
-
-    onChange([...selected, nome]);
   };
 
-  const isChecked = (nome: string) => selected.includes(nome);
+  const isChecked = (nome: string) => {
+    return selected.includes(nome);
+  };
 
   const displayText = () => {
     if (selected.length === 0) return placeholder;
@@ -71,7 +84,7 @@ export function MultiSelectUnidade({
           {/* Selecionar Todas */}
           <label className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted/50 cursor-pointer text-xs font-medium">
             <Checkbox
-              checked={noneSelected || allSelected}
+              checked={allSelected}
               onCheckedChange={handleToggleAll}
             />
             {placeholder}

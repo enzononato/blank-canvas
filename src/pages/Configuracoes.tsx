@@ -621,7 +621,6 @@ export default function Configuracoes() {
                 <p className="text-sm font-medium">O backup inclui:</p>
                 <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
                   <li>Protocolos</li>
-                  <li>Sobras (Pós-Rota)</li>
                   <li>Motoristas</li>
                   <li>Clientes (PDVs)</li>
                   <li>Produtos</li>
@@ -661,7 +660,7 @@ export default function Configuracoes() {
                 Exportar Fotos do Sistema
               </CardTitle>
               <CardDescription>
-                Baixe todas as fotos dos protocolos e sobras (pós-rota) em um arquivo ZIP
+                Baixe todas as fotos dos protocolos em um arquivo ZIP
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

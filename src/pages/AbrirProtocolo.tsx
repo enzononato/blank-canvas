@@ -22,7 +22,7 @@ import {
 import { toast } from 'sonner';
 import { Protocolo, Produto, Motorista, FotosProtocolo } from '@/types';
 import { mockMotoristas } from '@/data/mockData';
-import { useAddProtocolo } from '@/hooks/useAddProtocolo';
+import { useProtocolos } from '@/contexts/ProtocolosContext';
 import { PdvAutocomplete } from '@/components/PdvAutocomplete';
 
 interface ProdutoForm {
@@ -59,7 +59,7 @@ const formatOnlyNumbers = (value: string): string => {
 };
 
 export default function AbrirProtocolo() {
-  const { addProtocolo } = useAddProtocolo();
+  const { addProtocolo } = useProtocolos();
   const [mapa, setMapa] = useState('');
   const [codigoPdv, setCodigoPdv] = useState('');
   const [notaFiscal, setNotaFiscal] = useState('');

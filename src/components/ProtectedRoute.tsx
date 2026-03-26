@@ -23,13 +23,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to="/login" replace />;
   }
 
-  // Fallback de segurança: evita spinner infinito quando sessão existe,
-  // mas o perfil não pôde ser hidratado.
-  if (!user) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  if (!allowedRoles.includes(user.nivel)) {
+  if (!user || !allowedRoles.includes(user.nivel)) {
     return <Navigate to="/dashboard" replace />;
   }
 

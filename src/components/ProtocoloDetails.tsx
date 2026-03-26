@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Protocolo, ObservacaoLog, Produto, User, FotosProtocolo } from '@/types'; // restored
+import { Protocolo, ObservacaoLog, Produto, User } from '@/types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -94,8 +94,6 @@ export function ProtocoloDetails({
   const [motivoReabertura, setMotivoReabertura] = useState('');
   const [editandoProdutos, setEditandoProdutos] = useState(false);
   const [produtosEditados, setProdutosEditados] = useState<Produto[]>(protocolo?.produtos || []);
-
-
 
   // Função para validar formato de telefone brasileiro
   const validarTelefone = (telefone: string): boolean => {

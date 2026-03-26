@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Motorista, FuncaoMotorista, SetorMotorista } from '@/types';
 import { toast } from 'sonner';
 
-interface MotoristaPublicDB {
+interface MotoristaDB {
   id: string;
   nome: string;
   codigo: string;
@@ -14,11 +14,12 @@ interface MotoristaPublicDB {
   setor: string;
   whatsapp: string | null;
   email: string | null;
+  senha: string | null;
   created_at: string | null;
 }
 
-// Converter do formato DB (view pública) para o formato da aplicação
-const dbToMotorista = (db: MotoristaPublicDB): Motorista => ({
+// Converter do formato DB para o formato da aplicação
+const dbToMotorista = (db: MotoristaDB): Motorista => ({
   id: db.id,
   nome: db.nome,
   codigo: db.codigo,
@@ -29,11 +30,12 @@ const dbToMotorista = (db: MotoristaPublicDB): Motorista => ({
   setor: db.setor as SetorMotorista,
   whatsapp: db.whatsapp || undefined,
   email: db.email || undefined,
+  senha: db.senha || undefined,
   createdAt: db.created_at || new Date().toISOString(),
 });
 
-// Converter do formato da aplicação para o formato DB (para INSERT/UPDATE na tabela base)
-const motoristaToDB = (m: Motorista) => ({
+// Converter do formato da aplicação para o formato DB
+const motoristaToDB = (m: Motorista): Omit<MotoristaDB, 'id' | 'created_at'> => ({
   nome: m.nome,
   codigo: m.codigo,
   cpf: m.cpf || null,
@@ -52,21 +54,15 @@ export function useMotoristasDB() {
   const { data: motoristas = [], isLoading, error } = useQuery({
     queryKey: ['motoristas'],
     queryFn: async () => {
-      // Usar a view pública que não expõe senha/cpf
       const { data, error: fetchError } = await supabase
-        .from('motoristas_public' as any)
+        .from('motoristas')
         .select('*')
-        .order('nome', { ascending: true })
-        .limit(1000);
+        .order('nome', { ascending: true });
 
       if (fetchError) throw fetchError;
-      return (data as unknown as MotoristaPublicDB[]).map(dbToMotorista);
+      return (data as MotoristaDB[]).map(dbToMotorista);
     },
-    staleTime: 1000 * 60 * 5,
-    gcTime: 1000 * 60 * 30,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    retry: 1,
+    staleTime: 1000 * 60 * 5, // 5 minutes cache
   });
 
   const addMutation = useMutation({
@@ -137,6 +133,7 @@ export function useMotoristasDB() {
 
   const importMutation = useMutation({
     mutationFn: async (newMotoristas: Omit<Motorista, 'id' | 'createdAt'>[]) => {
+      // Deduplicar por código (manter o último registro de cada código)
       const uniqueMap = new Map<string, Omit<Motorista, 'id' | 'createdAt'>>();
       newMotoristas.forEach(m => uniqueMap.set(m.codigo, m));
       const uniqueMotoristas = Array.from(uniqueMap.values());
@@ -197,7 +194,7 @@ export function useMotoristasDB() {
 
   const getMotoristaByCode = async (codigo: string): Promise<Motorista | null> => {
     const { data, error: fetchError } = await supabase
-      .from('motoristas_public' as any)
+      .from('motoristas')
       .select('*')
       .eq('codigo', codigo)
       .single();
@@ -206,7 +203,7 @@ export function useMotoristasDB() {
       return null;
     }
 
-    return dbToMotorista(data as unknown as MotoristaPublicDB);
+    return dbToMotorista(data as MotoristaDB);
   };
 
   return {
