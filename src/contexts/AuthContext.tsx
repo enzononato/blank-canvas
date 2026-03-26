@@ -200,6 +200,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
+    clearCachedUser();
   }, [user, registrarLog]);
 
   const isAdmin = user?.nivel === 'admin';
