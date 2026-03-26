@@ -255,8 +255,7 @@ export default function Dashboard() {
       // Encerrados: protocolos encerrados nesse dia (pela data do log)
       const encerradosNoDia = protocolosFiltrados.filter(p => {
         if (p.status !== 'encerrado') return false;
-        const logEnc = (p.observacoesLog as ObservacaoLog[] | undefined)?.find(l => l.acao?.startsWith('Encerrou o protocolo'));
-        const dataEnc = logEnc?.data || null;
+        const dataEnc = getDataEncerramentoFromLog(p.observacoesLog);
         return dataEnc === dateStr;
       }).length;
       
