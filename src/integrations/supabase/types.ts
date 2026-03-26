@@ -585,6 +585,33 @@ export type Database = {
         }
         Relationships: []
       }
+      representantes: {
+        Row: {
+          cpf: string
+          created_at: string | null
+          id: string
+          nome: string
+          senha: string
+          unidade: string
+        }
+        Insert: {
+          cpf: string
+          created_at?: string | null
+          id?: string
+          nome: string
+          senha: string
+          unidade: string
+        }
+        Update: {
+          cpf?: string
+          created_at?: string | null
+          id?: string
+          nome?: string
+          senha?: string
+          unidade?: string
+        }
+        Relationships: []
+      }
       unidades: {
         Row: {
           cnpj: string | null
@@ -671,7 +698,72 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      motoristas_public: {
+        Row: {
+          codigo: string | null
+          cpf: string | null
+          created_at: string | null
+          data_nascimento: string | null
+          email: string | null
+          funcao: string | null
+          id: string | null
+          nome: string | null
+          setor: string | null
+          unidade: string | null
+          whatsapp: string | null
+        }
+        Insert: {
+          codigo?: string | null
+          cpf?: string | null
+          created_at?: string | null
+          data_nascimento?: string | null
+          email?: string | null
+          funcao?: string | null
+          id?: string | null
+          nome?: string | null
+          setor?: string | null
+          unidade?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          codigo?: string | null
+          cpf?: string | null
+          created_at?: string | null
+          data_nascimento?: string | null
+          email?: string | null
+          funcao?: string | null
+          id?: string | null
+          nome?: string | null
+          setor?: string | null
+          unidade?: string | null
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
+      representantes_public: {
+        Row: {
+          cpf: string | null
+          created_at: string | null
+          id: string | null
+          nome: string | null
+          unidade: string | null
+        }
+        Insert: {
+          cpf?: string | null
+          created_at?: string | null
+          id?: string | null
+          nome?: string | null
+          unidade?: string | null
+        }
+        Update: {
+          cpf?: string | null
+          created_at?: string | null
+          id?: string | null
+          nome?: string | null
+          unidade?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       count_pdvs_por_unidade: {
