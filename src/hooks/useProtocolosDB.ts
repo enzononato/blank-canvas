@@ -191,7 +191,7 @@ export function useProtocolosDB() {
 
       if (error) throw error;
 
-      return (data as ProtocoloDB[] | null)?.map(dbToProtocolo) ?? [];
+      return (data as unknown as ProtocoloDB[] | null)?.map(dbToProtocolo) ?? [];
     }
   });
 
