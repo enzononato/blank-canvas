@@ -178,20 +178,59 @@ export function useProtocolosDB() {
     queryFn: async () => {
       const allData: ProtocoloDB[] = [];
 
-      // Carregar em lotes menores evita timeout e melhora o tempo de primeira renderização.
-      // Mantemos uma janela ampla de dados recentes para não travar a aplicação.
-      const PAGE_SIZE = 300;
+      // Carregamento sequencial com cursor (keyset) evita custo de OFFSET alto em tabelas grandes.
+      // Mantemos janela ampla de dados recentes sem travar a UI.
+      const PAGE_SIZE = 250;
       const MAX_ROWS = 1200;
+      const BATCH_TIMEOUT_MS = 8000;
+      let cursorCreatedAt: string | null = null;
 
-      for (let from = 0; from < MAX_ROWS; from += PAGE_SIZE) {
-        const to = Math.min(from + PAGE_SIZE - 1, MAX_ROWS - 1);
+      const runWithTimeout = <T,>(operation: PromiseLike<T>, timeoutMs: number): Promise<T> => {
+        return new Promise((resolve, reject) => {
+          const timeoutId = setTimeout(() => {
+            reject(new Error('Tempo limite atingido ao carregar lote de protocolos'));
+          }, timeoutMs);
 
-        const { data, error } = await supabase
+          Promise.resolve(operation)
+            .then((result) => {
+              clearTimeout(timeoutId);
+              resolve(result);
+            })
+            .catch((err) => {
+              clearTimeout(timeoutId);
+              reject(err);
+            });
+        });
+      };
+
+      while (allData.length < MAX_ROWS) {
+        let query = supabase
           .from('protocolos')
           .select('*')
           .eq('ativo', true)
           .order('created_at', { ascending: false })
-          .range(from, to);
+          .limit(PAGE_SIZE);
+
+        if (cursorCreatedAt) {
+          query = query.lt('created_at', cursorCreatedAt);
+        }
+
+        let response: { data: unknown[] | null; error: unknown | null };
+        try {
+          response = await runWithTimeout(query, BATCH_TIMEOUT_MS) as {
+            data: unknown[] | null;
+            error: unknown | null;
+          };
+        } catch (batchError) {
+          // Se já carregou parte dos dados, preserva o que veio para não bloquear a tela.
+          if (allData.length > 0) {
+            console.warn('[protocolos] Timeout parcial ao carregar histórico. Exibindo dados já carregados.');
+            break;
+          }
+          throw batchError;
+        }
+
+        const { data, error } = response;
 
         if (error) {
           // Se já carregou parte dos dados, preserva o que veio para não bloquear a tela.
@@ -208,12 +247,19 @@ export function useProtocolosDB() {
 
         allData.push(...(data as unknown as ProtocoloDB[]));
 
+        const lastRow = data[data.length - 1] as ProtocoloDB | undefined;
+        cursorCreatedAt = lastRow?.created_at || null;
+
+        if (!cursorCreatedAt) {
+          break;
+        }
+
         if (data.length < PAGE_SIZE) {
           break;
         }
       }
 
-      return allData.map(dbToProtocolo);
+      return allData.slice(0, MAX_ROWS).map(dbToProtocolo);
     }
   });
 
