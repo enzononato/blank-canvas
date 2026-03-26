@@ -180,89 +180,18 @@ export function useProtocolosDB() {
     refetchOnReconnect: false,
     retry: 1,
     queryFn: async () => {
-      const allData: ProtocoloDB[] = [];
+      const limit = queryScope === 'resumo' ? 300 : 500;
 
-      // Mantém carregamento rápido: resumo menor para dashboard e carga maior apenas em telas que precisam detalhamento.
-      const PAGE_SIZE = queryScope === 'resumo' ? 150 : 220;
-      const MAX_ROWS = queryScope === 'resumo' ? 300 : 900;
-      const BATCH_TIMEOUT_MS = queryScope === 'resumo' ? 4500 : 7000;
-      let cursorCreatedAt: string | null = null;
+      const { data, error } = await supabase
+        .from('protocolos')
+        .select('*')
+        .eq('ativo', true)
+        .order('created_at', { ascending: false })
+        .limit(limit);
 
-      const runWithTimeout = <T,>(operation: PromiseLike<T>, timeoutMs: number): Promise<T> => {
-        return new Promise((resolve, reject) => {
-          const timeoutId = setTimeout(() => {
-            reject(new Error('Tempo limite atingido ao carregar lote de protocolos'));
-          }, timeoutMs);
+      if (error) throw error;
 
-          Promise.resolve(operation)
-            .then((result) => {
-              clearTimeout(timeoutId);
-              resolve(result);
-            })
-            .catch((err) => {
-              clearTimeout(timeoutId);
-              reject(err);
-            });
-        });
-      };
-
-      while (allData.length < MAX_ROWS) {
-        let query = supabase
-          .from('protocolos')
-          .select('*')
-          .eq('ativo', true)
-          .order('created_at', { ascending: false })
-          .limit(PAGE_SIZE);
-
-        if (cursorCreatedAt) {
-          query = query.lt('created_at', cursorCreatedAt);
-        }
-
-        let response: { data: unknown[] | null; error: unknown | null };
-        try {
-          response = await runWithTimeout(query, BATCH_TIMEOUT_MS) as {
-            data: unknown[] | null;
-            error: unknown | null;
-          };
-        } catch (batchError) {
-          // Se já carregou parte dos dados, preserva o que veio para não bloquear a tela.
-          if (allData.length > 0) {
-            console.warn('[protocolos] Timeout parcial ao carregar histórico. Exibindo dados já carregados.');
-            break;
-          }
-          throw batchError;
-        }
-
-        const { data, error } = response;
-
-        if (error) {
-          // Se já carregou parte dos dados, preserva o que veio para não bloquear a tela.
-          if (allData.length > 0) {
-            console.warn('[protocolos] Timeout parcial ao carregar histórico. Exibindo dados já carregados.');
-            break;
-          }
-          throw error;
-        }
-
-        if (!data?.length) {
-          break;
-        }
-
-        allData.push(...(data as unknown as ProtocoloDB[]));
-
-        const lastRow = data[data.length - 1] as ProtocoloDB | undefined;
-        cursorCreatedAt = lastRow?.created_at || null;
-
-        if (!cursorCreatedAt) {
-          break;
-        }
-
-        if (data.length < PAGE_SIZE) {
-          break;
-        }
-      }
-
-      return allData.slice(0, MAX_ROWS).map(dbToProtocolo);
+      return (data as ProtocoloDB[] | null)?.map(dbToProtocolo) ?? [];
     }
   });
 
