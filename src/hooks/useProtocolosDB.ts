@@ -180,18 +180,53 @@ export function useProtocolosDB() {
     refetchOnReconnect: false,
     retry: 1,
     queryFn: async () => {
-      const limit = queryScope === 'resumo' ? 1000 : 5000;
+      if (queryScope === 'resumo') {
+        const { data, error } = await supabase
+          .from('protocolos')
+          .select('*')
+          .eq('ativo', true)
+          .order('created_at', { ascending: false })
+          .limit(300);
 
-      const { data, error } = await supabase
+        if (error) throw error;
+        return (data as unknown as ProtocoloDB[] | null)?.map(dbToProtocolo) ?? [];
+      }
+
+      const pageSize = 1000;
+
+      const { count, error: countError } = await supabase
         .from('protocolos')
-        .select('*')
-        .eq('ativo', true)
-        .order('created_at', { ascending: false })
-        .limit(limit);
+        .select('id', { count: 'exact', head: true })
+        .eq('ativo', true);
 
-      if (error) throw error;
+      if (countError) throw countError;
 
-      return (data as unknown as ProtocoloDB[] | null)?.map(dbToProtocolo) ?? [];
+      const total = count ?? 0;
+      if (total === 0) return [];
+
+      const totalPages = Math.ceil(total / pageSize);
+
+      const pageRequests = Array.from({ length: totalPages }, (_, pageIndex) => {
+        const from = pageIndex * pageSize;
+        const to = from + pageSize - 1;
+
+        return supabase
+          .from('protocolos')
+          .select('*')
+          .eq('ativo', true)
+          .order('created_at', { ascending: false })
+          .range(from, to);
+      });
+
+      const pageResults = await Promise.all(pageRequests);
+      const pageError = pageResults.find((result) => result.error)?.error;
+      if (pageError) throw pageError;
+
+      const allProtocolos = pageResults.flatMap(
+        (result) => (result.data as unknown as ProtocoloDB[] | null) ?? []
+      );
+
+      return allProtocolos.map(dbToProtocolo);
     }
   });
 
