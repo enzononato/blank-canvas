@@ -230,6 +230,46 @@ export default function Dashboard() {
     });
   }, [protocolosFiltrados]);
 
+  const normalizeObservacoesLog = (observacoesLog?: unknown): ObservacaoLog[] => {
+    if (Array.isArray(observacoesLog)) return observacoesLog as ObservacaoLog[];
+    if (typeof observacoesLog === 'string') {
+      try {
+        const parsed = JSON.parse(observacoesLog);
+        return Array.isArray(parsed) ? (parsed as ObservacaoLog[]) : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  };
+
+  const getDataEncerramentoFromLog = (observacoesLog?: unknown): string | null => {
+    const logs = normalizeObservacoesLog(observacoesLog);
+    const logEncerramento = logs.find(l => l?.acao?.startsWith('Encerrou o protocolo'));
+    return logEncerramento?.data || null;
+  };
+
+  const calcularSlaDias = (dataStr: string, status?: string, observacoesLog?: unknown): number => {
+    try {
+      const dataProtocolo = parse(dataStr, 'dd/MM/yyyy', new Date());
+      if (status === 'encerrado') {
+        const dataEncerramentoStr = getDataEncerramentoFromLog(observacoesLog);
+        if (dataEncerramentoStr) {
+          const dataEncerramento = parse(dataEncerramentoStr, 'dd/MM/yyyy', new Date());
+          return differenceInDays(dataEncerramento, dataProtocolo);
+        }
+      }
+      return differenceInDays(new Date(), dataProtocolo);
+    } catch {
+      return 0;
+    }
+  };
+
+  const foiReaberto = (observacoesLog?: unknown): boolean => {
+    const logs = normalizeObservacoesLog(observacoesLog);
+    return logs.some(log => log?.acao === 'Reabriu o protocolo');
+  };
+
   // Dados do gráfico de pizza
   const pieData = useMemo(() => [
     { name: 'Abertos', value: stats.emAberto },
@@ -400,49 +440,6 @@ export default function Dashboard() {
     return nome.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
   };
 
-  const normalizeObservacoesLog = (observacoesLog?: unknown): ObservacaoLog[] => {
-    if (Array.isArray(observacoesLog)) return observacoesLog as ObservacaoLog[];
-
-    if (typeof observacoesLog === 'string') {
-      try {
-        const parsed = JSON.parse(observacoesLog);
-        return Array.isArray(parsed) ? (parsed as ObservacaoLog[]) : [];
-      } catch {
-        return [];
-      }
-    }
-
-    return [];
-  };
-
-  // Função para extrair data de encerramento do log
-  const getDataEncerramentoFromLog = (observacoesLog?: unknown): string | null => {
-    const logs = normalizeObservacoesLog(observacoesLog);
-    const logEncerramento = logs.find(l => l?.acao?.startsWith('Encerrou o protocolo'));
-    return logEncerramento?.data || null;
-  };
-
-  // Função para cor do SLA - padronizada com página Protocolos (dias)
-  // Função para cor do SLA - usando campo data (DD/MM/YYYY) para consistência com backend
-  const calcularSlaDias = (dataStr: string, status?: string, observacoesLog?: unknown): number => {
-    try {
-      const dataProtocolo = parse(dataStr, 'dd/MM/yyyy', new Date());
-      
-      // Se encerrado, calcular até a data de encerramento
-      if (status === 'encerrado') {
-        const dataEncerramentoStr = getDataEncerramentoFromLog(observacoesLog);
-        if (dataEncerramentoStr) {
-          const dataEncerramento = parse(dataEncerramentoStr, 'dd/MM/yyyy', new Date());
-          return differenceInDays(dataEncerramento, dataProtocolo);
-        }
-      }
-      
-      return differenceInDays(new Date(), dataProtocolo);
-    } catch {
-      return 0;
-    }
-  };
-
   // Lead Time médio (dias) dos protocolos encerrados
   const leadTime = useMemo(() => {
     const encerrados = protocolosFiltrados.filter(p => p.status === 'encerrado');
@@ -469,12 +466,6 @@ export default function Dashboard() {
     if (dias >= 15) return 'text-foreground bg-red-300 dark:bg-red-500/30 dark:text-red-300';
     if (dias > 7) return 'text-foreground bg-amber-200 dark:bg-amber-500/30 dark:text-amber-300';
     return 'text-foreground bg-emerald-300 dark:bg-emerald-500/30 dark:text-emerald-300';
-  };
-
-  // Verificar se protocolo foi reaberto
-  const foiReaberto = (observacoesLog?: unknown): boolean => {
-    const logs = normalizeObservacoesLog(observacoesLog);
-    return logs.some(log => log?.acao === 'Reabriu o protocolo');
   };
 
   // Cor para avatar baseado no nome
