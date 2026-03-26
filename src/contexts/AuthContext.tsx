@@ -30,6 +30,34 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const buildFallbackUser = (authUser: User): AppUser => ({
+  id: authUser.id,
+  nome: (authUser.user_metadata?.nome as string | undefined) || authUser.email || 'Usuário',
+  email: authUser.email || '',
+  nivel: 'conferente',
+  unidade: '',
+});
+
+const fallbackAuthContext: AuthContextType = {
+  user: null,
+  session: null,
+  isAuthenticated: false,
+  isLoading: false,
+  login: async () => ({
+    success: false,
+    error: 'Sistema de autenticação indisponível. Atualize a página e tente novamente.',
+  }),
+  logout: async () => {},
+  isAdmin: false,
+  isDistribuicao: false,
+  isConferente: false,
+  isControle: false,
+  canValidate: false,
+  canLaunch: false,
+};
+
+let hasWarnedMissingProvider = false;
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -39,20 +67,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Buscar perfil do usuário no banco
   const fetchUserProfile = useCallback(async (authUser: User): Promise<AppUser | null> => {
     try {
-      const { data: profile, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('user_email', authUser.email)
-        .maybeSingle();
+      const { data: profile, error } = await withRetry(async () => {
+        return supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('user_email', authUser.email)
+          .maybeSingle();
+      }, 2, 600);
 
       if (error) {
-        console.error('Erro ao buscar perfil:', error);
-        return null;
+        console.warn('Erro ao buscar perfil, aplicando fallback:', error.message);
+        return buildFallbackUser(authUser);
       }
 
       if (!profile) {
-        console.warn('Perfil não encontrado para:', authUser.email);
-        return null;
+        console.warn('Perfil não encontrado, aplicando fallback para:', authUser.email);
+        return buildFallbackUser(authUser);
       }
 
       return {
@@ -63,8 +93,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         unidade: profile.unidade || '',
       };
     } catch (err) {
-      console.error('Erro ao buscar perfil:', err);
-      return null;
+      console.warn('Erro ao buscar perfil, aplicando fallback:', err);
+      return buildFallbackUser(authUser);
     }
   }, []);
 
@@ -149,18 +179,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (result.user) {
         const profile = await fetchUserProfile(result.user);
-        if (profile) {
-          setUser(profile);
-          await registrarLog({
-            acao: 'login',
-            tabela: 'sessao',
-            registro_id: profile.id,
-            registro_dados: { email: profile.email },
-            usuario_nome: profile.nome,
-            usuario_role: profile.nivel,
-            usuario_unidade: profile.unidade,
-          });
-        }
+        setUser(profile);
+        void registrarLog({
+          acao: 'login',
+          tabela: 'sessao',
+          registro_id: profile.id,
+          registro_dados: { email: profile.email },
+          usuario_nome: profile.nome,
+          usuario_role: profile.nivel,
+          usuario_unidade: profile.unidade,
+        });
         return { success: true };
       }
       return { success: false, error: 'Resposta inesperada do servidor' };
@@ -174,7 +202,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     if (user) {
       // Registrar log de logout
-      await registrarLog({
+      void registrarLog({
         acao: 'logout',
         tabela: 'sessao',
         registro_id: user.id,
@@ -217,8 +245,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
+  if (!context && !hasWarnedMissingProvider) {
+    hasWarnedMissingProvider = true;
+    console.error('useAuth foi chamado fora do AuthProvider. Aplicando fallback para evitar tela em branco.');
   }
-  return context;
+  return context ?? fallbackAuthContext;
 }
