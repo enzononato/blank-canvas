@@ -400,15 +400,31 @@ export default function Dashboard() {
     return nome.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
   };
 
+  const normalizeObservacoesLog = (observacoesLog?: unknown): ObservacaoLog[] => {
+    if (Array.isArray(observacoesLog)) return observacoesLog as ObservacaoLog[];
+
+    if (typeof observacoesLog === 'string') {
+      try {
+        const parsed = JSON.parse(observacoesLog);
+        return Array.isArray(parsed) ? (parsed as ObservacaoLog[]) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    return [];
+  };
+
   // Função para extrair data de encerramento do log
-  const getDataEncerramentoFromLog = (observacoesLog?: ObservacaoLog[]): string | null => {
-    const logEncerramento = observacoesLog?.find(l => l.acao?.startsWith('Encerrou o protocolo'));
+  const getDataEncerramentoFromLog = (observacoesLog?: unknown): string | null => {
+    const logs = normalizeObservacoesLog(observacoesLog);
+    const logEncerramento = logs.find(l => l?.acao?.startsWith('Encerrou o protocolo'));
     return logEncerramento?.data || null;
   };
 
   // Função para cor do SLA - padronizada com página Protocolos (dias)
   // Função para cor do SLA - usando campo data (DD/MM/YYYY) para consistência com backend
-  const calcularSlaDias = (dataStr: string, status?: string, observacoesLog?: ObservacaoLog[]): number => {
+  const calcularSlaDias = (dataStr: string, status?: string, observacoesLog?: unknown): number => {
     try {
       const dataProtocolo = parse(dataStr, 'dd/MM/yyyy', new Date());
       
@@ -427,28 +443,6 @@ export default function Dashboard() {
     }
   };
 
-  // Lead Time médio (dias) dos protocolos encerrados
-  const leadTime = useMemo(() => {
-    const encerrados = protocolosFiltrados.filter(p => p.status === 'encerrado');
-    if (encerrados.length === 0) return '—';
-    const totalDias = encerrados.reduce((acc, p) => {
-      return acc + calcularSlaDias(p.data, p.status, p.observacoesLog);
-    }, 0);
-    return (totalDias / encerrados.length).toFixed(1);
-  }, [protocolosFiltrados]);
-
-  // Protocolos próximos de atingir 16 dias de SLA (13-15 dias)
-  const protocolosProximosSLA = useMemo(() => {
-    return protocolosFiltrados
-      .filter(p => p.status !== 'encerrado')
-      .map(p => {
-        const slaDias = calcularSlaDias(p.data, p.status, p.observacoesLog);
-        return { ...p, slaDias };
-      })
-      .filter(p => p.slaDias >= 13 && p.slaDias <= 15)
-      .sort((a, b) => b.slaDias - a.slaDias);
-  }, [protocolosFiltrados]);
-
   const getSlaColor = (dias: number): string => {
     if (dias >= 15) return 'text-foreground bg-red-300 dark:bg-red-500/30 dark:text-red-300';
     if (dias > 7) return 'text-foreground bg-amber-200 dark:bg-amber-500/30 dark:text-amber-300';
@@ -456,8 +450,9 @@ export default function Dashboard() {
   };
 
   // Verificar se protocolo foi reaberto
-  const foiReaberto = (observacoesLog?: ObservacaoLog[]): boolean => {
-    return !!observacoesLog?.some(log => log.acao === 'Reabriu o protocolo');
+  const foiReaberto = (observacoesLog?: unknown): boolean => {
+    const logs = normalizeObservacoesLog(observacoesLog);
+    return logs.some(log => log?.acao === 'Reabriu o protocolo');
   };
 
   // Cor para avatar baseado no nome
