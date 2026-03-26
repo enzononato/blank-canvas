@@ -443,6 +443,28 @@ export default function Dashboard() {
     }
   };
 
+  // Lead Time médio (dias) dos protocolos encerrados
+  const leadTime = useMemo(() => {
+    const encerrados = protocolosFiltrados.filter(p => p.status === 'encerrado');
+    if (encerrados.length === 0) return '—';
+    const totalDias = encerrados.reduce((acc, p) => {
+      return acc + calcularSlaDias(p.data, p.status, p.observacoesLog);
+    }, 0);
+    return (totalDias / encerrados.length).toFixed(1);
+  }, [protocolosFiltrados]);
+
+  // Protocolos próximos de atingir 16 dias de SLA (13-15 dias)
+  const protocolosProximosSLA = useMemo(() => {
+    return protocolosFiltrados
+      .filter(p => p.status !== 'encerrado')
+      .map(p => {
+        const slaDias = calcularSlaDias(p.data, p.status, p.observacoesLog);
+        return { ...p, slaDias };
+      })
+      .filter(p => p.slaDias >= 13 && p.slaDias <= 15)
+      .sort((a, b) => b.slaDias - a.slaDias);
+  }, [protocolosFiltrados]);
+
   const getSlaColor = (dias: number): string => {
     if (dias >= 15) return 'text-foreground bg-red-300 dark:bg-red-500/30 dark:text-red-300';
     if (dias > 7) return 'text-foreground bg-amber-200 dark:bg-amber-500/30 dark:text-amber-300';
