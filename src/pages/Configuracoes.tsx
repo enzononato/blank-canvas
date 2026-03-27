@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,7 +20,7 @@ import { usePdvsDB } from '@/hooks/usePdvsDB';
 import { useProtocolos } from '@/contexts/ProtocolosContext';
 import { useAuth } from '@/contexts/AuthContext';
 
-export default function Configuracoes() {
+const Configuracoes = forwardRef<HTMLDivElement, {}>(function Configuracoes(_props, ref) {
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [webhookToken, setWebhookToken] = useState('');
   const [slaDefault, setSlaDefault] = useState('4');
@@ -308,7 +308,7 @@ export default function Configuracoes() {
   };
 
   return (
-    <div className="space-y-4">
+    <div ref={ref} className="space-y-4">
       <div>
         <h1 className="font-heading text-2xl font-bold text-foreground">Configurações</h1>
         <p className="text-muted-foreground mt-0.5 text-sm">Gerencie as configurações do sistema</p>
@@ -699,4 +699,6 @@ export default function Configuracoes() {
       </Tabs>
     </div>
   );
-}
+});
+
+export default Configuracoes;
