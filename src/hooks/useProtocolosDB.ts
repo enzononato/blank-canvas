@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Protocolo, Produto, FotosProtocolo, ObservacaoLog } from '@/types';
 import { toast } from '@/hooks/use-toast';
@@ -166,9 +167,22 @@ function protocoloToDB(p: Protocolo): Omit<ProtocoloDB, 'id'> {
 
 export function useProtocolosDB() {
   const queryClient = useQueryClient();
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setAuthReady(!!session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthReady(!!session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const { data: protocolos = [], isLoading, error } = useQuery({
-    queryKey: ['protocolos'],
+    queryKey: ['protocolos', authReady],
     queryFn: async () => {
       // Buscar todos os protocolos em páginas de 1000 para contornar o limite do PostgREST
       const PAGE_SIZE = 1000;
@@ -197,7 +211,8 @@ export function useProtocolosDB() {
       }
 
       return allData.map(dbToProtocolo);
-    }
+    },
+    enabled: authReady,
   });
 
   const addMutation = useMutation({
