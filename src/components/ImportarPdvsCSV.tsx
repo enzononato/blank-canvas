@@ -106,7 +106,7 @@ export function ImportarPdvsCSV() {
       // Buscar TODOS os códigos existentes com paginação para evitar limite de 1000
       let allCodigos: string[] = [];
       let from = 0;
-      const pageSize = 5000;
+      const pageSize = 1000;
       while (true) {
         const { data } = await supabase
           .from('pdvs')
