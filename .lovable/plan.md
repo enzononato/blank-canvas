@@ -1,39 +1,19 @@
 
 
-# Fix: Importação de PDVs mostrando "novos" incorretamente
+# Fix: Paginação de PDVs usando pageSize maior que o limite do servidor
 
 ## Problema
-A consulta que busca códigos existentes no banco usa o limite padrão do banco (1.000 linhas). A unidade RP tem ~15.788 PDVs, então apenas 1.000 códigos são comparados — os outros ~14.788 aparecem falsamente como "novos".
+O `pageSize` está configurado como `5000`, mas o servidor limita respostas a **1000 linhas**. Quando a query retorna 1000 registros, o código interpreta `1000 < 5000` como "acabou os dados" e para o loop. Resultado: só 1000 dos 15.788 códigos são comparados.
 
 ## Solução
+Reduzir o `pageSize` para `1000` em ambos os arquivos para alinhar com o limite do servidor.
 
-### 1. `src/components/ImportarPdvsCSV.tsx` — função `enrichWithStatus`
-Substituir a query única por um loop paginado que busca **todos** os códigos existentes da unidade, em lotes de 5.000 (buscando apenas a coluna `codigo` para ser leve):
+### Arquivo 1: `src/components/ImportarPdvsCSV.tsx` — `enrichWithStatus`
+- Linha 109: `const pageSize = 5000;` → `const pageSize = 1000;`
 
-```typescript
-// Buscar TODOS os códigos existentes com paginação
-let allCodigos: string[] = [];
-let from = 0;
-const pageSize = 5000;
-while (true) {
-  const { data } = await supabase
-    .from('pdvs')
-    .select('codigo')
-    .eq('unidade', unidade.toUpperCase())
-    .range(from, from + pageSize - 1);
-  if (!data || data.length === 0) break;
-  allCodigos.push(...data.map(p => String(p.codigo).trim()));
-  if (data.length < pageSize) break;
-  from += pageSize;
-}
-const existentesSet = new Set(allCodigos);
-```
+### Arquivo 2: `src/hooks/usePdvsDB.ts` — `importPdvsNovos`
+- Mesma mudança: `const pageSize = 5000;` → `const pageSize = 1000;`
 
-### 2. `src/hooks/usePdvsDB.ts` — função `importPdvsNovos`
-Aplicar a mesma lógica paginada na busca de códigos existentes antes da comparação.
-
-## Impacto
-- Corrige a contagem de novos vs existentes no preview
-- Evita inserir duplicatas no banco
-- Query leve (só coluna `codigo`, ~16KB para 15k registros)
+## Por que funciona
+Com `pageSize = 1000`, quando a query retorna exatamente 1000 registros, o loop sabe que **pode haver mais** e continua buscando. Quando retorna menos de 1000, sabe que acabou. Isso garante que todos os 15.788 códigos da unidade RP sejam carregados antes da comparação.
 
