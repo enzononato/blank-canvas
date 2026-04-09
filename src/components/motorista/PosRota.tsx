@@ -13,10 +13,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { PdvAutocomplete } from '@/components/PdvAutocomplete';
+import { ProdutoAutocomplete } from '@/components/ProdutoAutocomplete';
 import { toast } from '@/hooks/use-toast';
 import { Motorista } from '@/types';
 import { cn } from '@/lib/utils';
-import { Loader2, CheckCircle, MapPin, FileText, Tag, AlertTriangle, Camera, X, ImageIcon, MessageCircle, Copy, Check, Plus, ChevronDown, ChevronUp, Clock, Package } from 'lucide-react';
+import { Loader2, CheckCircle, MapPin, FileText, Tag, AlertTriangle, Camera, X, ImageIcon, MessageCircle, Copy, Check, Plus, ChevronDown, ChevronUp, Clock, Package, Trash2, ShoppingCart, Truck } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { compressImage } from '@/utils/imageCompression';
 import { uploadFotoParaStorage } from '@/utils/uploadFotoStorage';
@@ -26,12 +27,12 @@ interface PosRotaProps {
   motorista: Motorista;
 }
 
-const TIPOS_POS_ROTA = [
-  { value: 'inversao', label: 'Inversão' },
-  { value: 'avaria', label: 'Avaria' },
-  { value: 'erro_carregamento', label: 'Erro de Carregamento' },
-  { value: 'erro_entrega', label: 'Erro de Entrega' },
-];
+interface ProdutoForm {
+  codigo: string;
+  nome: string;
+  quantidade: number;
+  unidade: 'UN' | 'CX' | 'PCT';
+}
 
 type AbaAtiva = 'form' | 'lista';
 
@@ -53,8 +54,8 @@ export function PosRota({ motorista }: PosRotaProps) {
   const [statusFiltro, setStatusFiltro] = useState<string>('aberto');
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [mapa, setMapa] = useState('');
+  const [placa, setPlaca] = useState('');
   const [notaFiscal, setNotaFiscal] = useState('');
-  const [tipo, setTipo] = useState('');
   const [codigoPdv, setCodigoPdv] = useState('');
   const [pdvSelecionado, setPdvSelecionado] = useState(false);
   const [observacao, setObservacao] = useState('');
@@ -63,8 +64,9 @@ export function PosRota({ motorista }: PosRotaProps) {
   const [numeroProtocolo, setNumeroProtocolo] = useState('');
   const [mensagemCopiada, setMensagemCopiada] = useState(false);
   const [mostrarDetalhes, setMostrarDetalhes] = useState(false);
+  const [produtos, setProdutos] = useState<ProdutoForm[]>([{ codigo: '', nome: '', quantidade: 1, unidade: 'UN' }]);
   const [dadosProtocoloCriado, setDadosProtocoloCriado] = useState<{
-    tipo: string; mapa: string; codigoPdv: string; notaFiscal: string; observacao: string; fotosCount: number; data: string; hora: string;
+    mapa: string; placa: string; codigoPdv: string; notaFiscal: string; observacao: string; fotosCount: number; data: string; hora: string; produtos: ProdutoForm[];
   } | null>(null);
   
   // Fotos
@@ -77,9 +79,7 @@ export function PosRota({ motorista }: PosRotaProps) {
   const [loadingSobras, setLoadingSobras] = useState(false);
   const [contadores, setContadores] = useState({ pendentes: 0, tratamento: 0, resolvido: 0 });
 
-  const precisaPdv = tipo === 'erro_entrega' || tipo === 'avaria' || tipo === 'inversao';
-  const precisaNF = tipo === 'avaria' || tipo === 'inversao';
-  const canSubmit = mapa.trim() && tipo && (!precisaPdv || (codigoPdv.trim() && pdvSelecionado)) && fotos.length > 0;
+  const canSubmit = mapa.trim() && placa.trim() && produtos.some(p => p.nome.trim() && p.quantidade >= 1) && fotos.length > 0;
 
   // Fetch sobras do motorista
   const fetchSobras = useCallback(async (statusFilter: string) => {
