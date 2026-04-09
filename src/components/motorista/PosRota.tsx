@@ -785,36 +785,6 @@ export function PosRota({ motorista }: PosRotaProps) {
               </div>
             </div>
 
-            {/* PDV e NF (opcionais) */}
-            <div className="bg-card rounded-xl shadow-sm border border-border/50 overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-border/30 bg-muted/20">
-                <h3 className="text-xs font-semibold flex items-center gap-2 text-foreground/80">
-                  <Tag className="w-3.5 h-3.5 text-primary" />
-                  PDV e Nota Fiscal (opcional)
-                </h3>
-              </div>
-              <div className="p-3.5 space-y-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium text-muted-foreground">Código do PDV</Label>
-                  <PdvAutocomplete
-                    value={codigoPdv}
-                    onChange={handlePdvChange}
-                    unidade={motorista.unidade}
-                    placeholder="Buscar PDV..."
-                    className="h-11 text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium text-muted-foreground">Nota Fiscal</Label>
-                  <Input
-                    placeholder="NF relacionada"
-                    value={notaFiscal}
-                    onChange={(e) => setNotaFiscal(e.target.value)}
-                    className="h-11 text-sm"
-                  />
-                </div>
-              </div>
-            </div>
 
             {/* Fotos */}
             <div className="bg-card rounded-xl shadow-sm border border-border/50 overflow-hidden">
