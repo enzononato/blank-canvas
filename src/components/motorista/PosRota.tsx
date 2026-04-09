@@ -733,13 +733,8 @@ export function PosRota({ motorista }: PosRotaProps) {
                     </div>
                     <ProdutoAutocomplete
                       value={produto.nome}
-                      onChange={(value, prod) => {
-                        if (prod) {
-                          updateProduto(index, 'codigo', prod.cod);
-                          updateProduto(index, 'nome', prod.produto);
-                        } else {
-                          updateProduto(index, 'nome', value);
-                        }
+                      onChange={(value) => {
+                        updateProduto(index, 'nome', value);
                       }}
                       placeholder="Buscar produto..."
                       className="h-10 text-sm"
