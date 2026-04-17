@@ -702,6 +702,10 @@ export default function Configuracoes() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="sync-users">
+          <SyncOrphanUsers />
+        </TabsContent>
+
       </Tabs>
     </div>
   );
