@@ -5,6 +5,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+function jsonResponse(body: Record<string, unknown>, status = 200) {
+  return new Response(JSON.stringify(body), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    status,
+  })
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -14,64 +21,56 @@ Deno.serve(async (req) => {
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
+      { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
     const { user_email, new_password } = await req.json()
 
     if (!user_email || !new_password) {
-      return new Response(
-        JSON.stringify({ error: 'Email e nova senha são obrigatórios' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      )
+      return jsonResponse({ error: 'Email e nova senha são obrigatórios' }, 400)
     }
 
-    // Buscar o usuário pelo email
-    const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers()
-    
-    if (listError) {
-      return new Response(
-        JSON.stringify({ error: listError.message }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      )
+    const emailLower = user_email.toLowerCase()
+    let foundUser: { id: string; email?: string } | undefined
+    let page = 1
+    const perPage = 1000
+
+    // Paginar até encontrar (máx 20k usuários)
+    while (!foundUser) {
+      const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage })
+      if (error) {
+        console.error('listUsers error:', error.message)
+        return jsonResponse({ error: error.message }, 200)
+      }
+      const users = data?.users ?? []
+      foundUser = users.find((u: { email?: string }) => u.email?.toLowerCase() === emailLower)
+      if (foundUser || users.length < perPage) break
+      page += 1
+      if (page > 20) break
     }
 
-    const user = users.users.find(u => u.email === user_email)
-    
-    if (!user) {
-      return new Response(
-        JSON.stringify({ error: 'Usuário não encontrado' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
-      )
+    if (!foundUser) {
+      console.error('Usuário não encontrado no Auth:', user_email)
+      return jsonResponse({ 
+        error: `Usuário ${user_email} não encontrado no sistema de autenticação. A senha não pôde ser atualizada.`,
+        reason: 'USER_NOT_FOUND'
+      }, 200)
     }
 
-    // Atualizar a senha do usuário
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      user.id,
+      foundUser.id,
       { password: new_password }
     )
 
     if (updateError) {
-      return new Response(
-        JSON.stringify({ error: updateError.message }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-      )
+      console.error('updateUserById error:', updateError.message)
+      return jsonResponse({ error: updateError.message }, 200)
     }
 
-    return new Response(
-      JSON.stringify({ success: true, message: 'Senha atualizada com sucesso' }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    return jsonResponse({ success: true, message: 'Senha atualizada com sucesso' })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Erro desconhecido'
-    return new Response(
-      JSON.stringify({ error: message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-    )
+    console.error('Unhandled error:', message)
+    return jsonResponse({ error: message }, 200)
   }
 })

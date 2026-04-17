@@ -94,6 +94,14 @@ export function useUsuariosDB() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, updates, newPassword }: { id: string; updates: Partial<Omit<Usuario, 'id' | 'createdAt'>>; newPassword?: string }) => {
+      // Buscar email atual antes de qualquer alteração (para localizar no Auth)
+      const { data: currentProfile } = await supabase
+        .from('user_profiles')
+        .select('user_email')
+        .eq('id', id)
+        .maybeSingle();
+      const originalEmail = currentProfile?.user_email;
+
       const updateData: Record<string, unknown> = {};
       
       if (updates.nome !== undefined) updateData.nome = updates.nome;
@@ -108,11 +116,11 @@ export function useUsuariosDB() {
 
       if (error) throw error;
 
-      // Se uma nova senha foi fornecida, atualizar via edge function
-      if (newPassword && updates.email) {
+      // Se uma nova senha foi fornecida, atualizar via edge function usando o email ORIGINAL
+      if (newPassword && originalEmail) {
         const { data, error: passwordError } = await supabase.functions.invoke('update-user-password', {
           body: {
-            user_email: updates.email,
+            user_email: originalEmail,
             new_password: newPassword,
           },
         });
