@@ -17,7 +17,7 @@ import { ProdutoAutocomplete } from '@/components/ProdutoAutocomplete';
 import { toast } from '@/hooks/use-toast';
 import { Motorista } from '@/types';
 import { cn } from '@/lib/utils';
-import { Loader2, CheckCircle, MapPin, FileText, Tag, AlertTriangle, Camera, X, ImageIcon, MessageCircle, Copy, Check, Plus, ChevronDown, ChevronUp, Clock, Package, Trash2, ShoppingCart, Truck } from 'lucide-react';
+import { Loader2, CheckCircle, MapPin, FileText, Tag, AlertTriangle, Camera, X, ImageIcon, MessageCircle, Copy, Check, Plus, Minus, ChevronDown, ChevronUp, Clock, Package, Trash2, ShoppingCart, Truck } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { compressImage } from '@/utils/imageCompression';
 import { uploadFotoParaStorage } from '@/utils/uploadFotoStorage';
@@ -754,13 +754,48 @@ export function PosRota({ motorista }: PosRotaProps) {
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
                         <Label className="text-[10px] text-muted-foreground">Qtd *</Label>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={produto.quantidade}
-                          onChange={(e) => updateProduto(index, 'quantidade', parseInt(e.target.value) || 1)}
-                          className="h-10 text-sm"
-                        />
+                        <div className="flex items-center gap-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-9 w-9 shrink-0"
+                            onClick={() => updateProduto(index, 'quantidade', Math.max(1, produto.quantidade - 1))}
+                            disabled={produto.quantidade <= 1}
+                          >
+                            <Minus className="w-4 h-4" />
+                          </Button>
+                          <Input
+                            type="number"
+                            min="1"
+                            inputMode="numeric"
+                            value={produto.quantidade === 0 ? '' : produto.quantidade}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (v === '') {
+                                updateProduto(index, 'quantidade', 0);
+                              } else {
+                                const n = parseInt(v);
+                                if (!isNaN(n)) updateProduto(index, 'quantidade', n);
+                              }
+                            }}
+                            onBlur={(e) => {
+                              const n = parseInt(e.target.value);
+                              if (isNaN(n) || n < 1) updateProduto(index, 'quantidade', 1);
+                            }}
+                            className="h-9 text-sm text-center w-14"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-9 w-9 shrink-0"
+                            onClick={() => updateProduto(index, 'quantidade', produto.quantidade + 1)}
+                          >
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                       <div className="space-y-1">
                         <Label className="text-[10px] text-muted-foreground">Unidade</Label>
