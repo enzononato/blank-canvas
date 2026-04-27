@@ -866,33 +866,167 @@ export default function Sobras() {
               {/* Produtos informados pelo motorista */}
               {(() => {
                 const produtos = parseProdutos(detalheSobra.produtos);
-                if (produtos.length === 0) return null;
+                const lista = editandoProdutos ? produtosEditados : produtos;
+                const isEncerrado = detalheSobra.status === 'encerrado';
+                if (produtos.length === 0 && !editandoProdutos) return null;
                 return (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
-                      <Package className="w-3.5 h-3.5" />
-                      Produtos informados ({produtos.length})
-                    </p>
-                    <div className="space-y-1.5">
-                      {produtos.map((p, i) => (
-                        <div
-                          key={i}
-                          className="flex items-start justify-between gap-3 bg-muted/50 rounded-lg p-2.5 text-sm"
-                        >
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{p.nome || 'Produto sem nome'}</p>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                              {p.codigo && <span className="font-mono">Cód {p.codigo}</span>}
-                              {p.validade && <span>Val: {p.validade}</span>}
-                              {p.observacao && <span className="italic">"{p.observacao}"</span>}
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Package className="w-3.5 h-3.5" />
+                        Produtos informados ({lista.length})
+                      </p>
+                      {podeEditarProdutos && !isEncerrado && (
+                        editandoProdutos ? (
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 text-xs px-2"
+                              onClick={cancelarEdicaoProdutos}
+                              disabled={salvandoProdutos}
+                            >
+                              <X className="w-3.5 h-3.5 mr-1" />
+                              Cancelar
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="h-7 text-xs px-2"
+                              onClick={handleSalvarProdutos}
+                              disabled={salvandoProdutos}
+                            >
+                              <Save className="w-3.5 h-3.5 mr-1" />
+                              Salvar
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs px-2"
+                            onClick={iniciarEdicaoProdutos}
+                          >
+                            <Pencil className="w-3.5 h-3.5 mr-1" />
+                            Editar
+                          </Button>
+                        )
+                      )}
+                    </div>
+
+                    {editandoProdutos ? (
+                      <div className="space-y-2">
+                        {produtosEditados.map((p, i) => (
+                          <div key={i} className="bg-muted/40 rounded-lg p-2.5 space-y-2 border border-border/40">
+                            <ProdutoAutocomplete
+                              value={p.codigo && p.nome ? `${p.codigo} - ${p.nome}` : (p.nome || '')}
+                              onChange={(v, emb) => updateProdutoAutocomplete(i, v, emb)}
+                              placeholder="Buscar produto"
+                              className="h-9 text-sm"
+                            />
+                            <div className="grid grid-cols-12 gap-2">
+                              <div className="col-span-5">
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-9 w-9 shrink-0"
+                                    onClick={() => updateProdutoEditado(i, 'quantidade', Math.max(1, (Number(p.quantidade) || 1) - 1))}
+                                    disabled={(Number(p.quantidade) || 1) <= 1}
+                                  >
+                                    <Minus className="w-4 h-4" />
+                                  </Button>
+                                  <Input
+                                    type="number"
+                                    inputMode="numeric"
+                                    value={p.quantidade === 0 || p.quantidade === '' ? '' : p.quantidade}
+                                    onChange={(e) => {
+                                      const v = e.target.value;
+                                      if (v === '') updateProdutoEditado(i, 'quantidade', 0);
+                                      else {
+                                        const n = parseInt(v);
+                                        if (!isNaN(n)) updateProdutoEditado(i, 'quantidade', n);
+                                      }
+                                    }}
+                                    onBlur={(e) => {
+                                      const n = parseInt(e.target.value);
+                                      if (isNaN(n) || n < 1) updateProdutoEditado(i, 'quantidade', 1);
+                                    }}
+                                    onFocus={(e) => e.target.select()}
+                                    className="h-9 text-sm text-center"
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-9 w-9 shrink-0"
+                                    onClick={() => updateProdutoEditado(i, 'quantidade', (Number(p.quantidade) || 0) + 1)}
+                                  >
+                                    <Plus className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                              <div className="col-span-5">
+                                <Select
+                                  value={['UN', 'CX', 'PCT'].includes(p.unidade || '') ? p.unidade : 'UN'}
+                                  onValueChange={(v) => updateProdutoEditado(i, 'unidade', v)}
+                                >
+                                  <SelectTrigger className="h-9 text-sm">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="UN">UN</SelectItem>
+                                    <SelectItem value="CX">CX</SelectItem>
+                                    <SelectItem value="PCT">PCT</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="col-span-2">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-9 w-9 text-destructive hover:bg-destructive/10"
+                                  onClick={() => removerProdutoEditado(i)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
                             </div>
                           </div>
-                          <Badge variant="outline" className="shrink-0 font-mono">
-                            {p.quantidade ?? '?'} {p.unidade || ''}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full h-8 text-xs"
+                          onClick={adicionarProdutoEditado}
+                        >
+                          <Plus className="w-3.5 h-3.5 mr-1" />
+                          Adicionar produto
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {produtos.map((p, i) => (
+                          <div
+                            key={i}
+                            className="flex items-start justify-between gap-3 bg-muted/50 rounded-lg p-2.5 text-sm"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate">{p.nome || 'Produto sem nome'}</p>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                                {p.codigo && <span className="font-mono">Cód {p.codigo}</span>}
+                                {p.validade && <span>Val: {p.validade}</span>}
+                                {p.observacao && <span className="italic">"{p.observacao}"</span>}
+                              </div>
+                            </div>
+                            <Badge variant="outline" className="shrink-0 font-mono">
+                              {p.quantidade ?? '?'} {p.unidade || ''}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })()}
