@@ -56,16 +56,16 @@ export default function HistoricoEnvios() {
       const ids = errorLogs.map(r => r.id);
       const { error } = await supabase
         .from('alteracao_pedidos_log')
-        .update({ sucesso: true, erro_mensagem: 'LIMPO_MANUALMENTE' })
+        .update({ oculto: true })
         .in('id', ids);
 
       if (error) {
-        console.error('Erro ao limpar erros:', error);
+        console.error('Erro ao ocultar erros:', error);
         toast.error('Erro ao limpar registros');
         return;
       }
 
-      toast.success(`${ids.length} erro(s) limpos do histórico!`);
+      toast.success(`${ids.length} erro(s) ocultos do histórico!`);
       await fetchHistory();
     } catch (err) {
       console.error('Erro ao limpar:', err);
