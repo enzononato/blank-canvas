@@ -81,6 +81,7 @@ export default function HistoricoEnvios() {
       let query = supabase
         .from('alteracao_pedidos_log')
         .select('id, cod_pdv, nome_pdv, telefone_pdv, status_pedido, mensagem_cliente, sucesso, erro_mensagem, created_at')
+        .eq('oculto', false)
         .order('created_at', { ascending: false })
         .limit(500);
 
