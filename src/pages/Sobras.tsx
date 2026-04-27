@@ -148,8 +148,115 @@ export default function Sobras() {
   const [comentario, setComentario] = useState('');
   const [enviandoComentario, setEnviandoComentario] = useState(false);
   const [excluindoSobra, setExcluindoSobra] = useState<string | null>(null);
+  const [editandoProdutos, setEditandoProdutos] = useState(false);
+  const [produtosEditados, setProdutosEditados] = useState<ProdutoSobra[]>([]);
+  const [salvandoProdutos, setSalvandoProdutos] = useState(false);
 
   const isAdmin = user?.nivel === 'admin';
+  const podeEditarProdutos = ['admin', 'controle', 'distribuicao'].includes(user?.nivel || '');
+
+  const formatarProdutoHistorico = (p: ProdutoSobra) =>
+    `${p.codigo || '-'} | ${p.nome || '-'} | ${p.quantidade ?? 0} ${p.unidade || '-'}${p.validade ? ` | val: ${p.validade}` : ''}${p.observacao ? ` | obs: ${p.observacao}` : ''}`;
+
+  const iniciarEdicaoProdutos = () => {
+    if (!detalheSobra) return;
+    setProdutosEditados(parseProdutos(detalheSobra.produtos));
+    setEditandoProdutos(true);
+  };
+
+  const cancelarEdicaoProdutos = () => {
+    setEditandoProdutos(false);
+    setProdutosEditados([]);
+  };
+
+  const updateProdutoEditado = (index: number, field: keyof ProdutoSobra, value: string | number) => {
+    setProdutosEditados(prev => prev.map((p, i) => i === index ? { ...p, [field]: value } : p));
+  };
+
+  const updateProdutoAutocomplete = (index: number, displayValue: string, embalagem?: string) => {
+    const match = displayValue.match(/^(\d+)\s*-\s*(.+)$/);
+    setProdutosEditados(prev => prev.map((p, i) => i === index ? {
+      ...p,
+      codigo: match ? match[1] : '',
+      nome: match ? match[2] : displayValue,
+      unidade: ['UN', 'CX', 'PCT'].includes(p.unidade || '') ? p.unidade : (embalagem && ['UN', 'CX', 'PCT'].includes(embalagem) ? embalagem : 'UN'),
+    } : p));
+  };
+
+  const removerProdutoEditado = (index: number) => {
+    setProdutosEditados(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const adicionarProdutoEditado = () => {
+    setProdutosEditados(prev => [...prev, { codigo: '', nome: '', unidade: 'UN', quantidade: 1, validade: '' }]);
+  };
+
+  const handleSalvarProdutos = async () => {
+    if (!detalheSobra || !user) return;
+
+    const sanitizados = produtosEditados.map(p => ({
+      codigo: String(p.codigo || '').trim(),
+      nome: String(p.nome || '').trim(),
+      unidade: (() => { const u = String(p.unidade || '').trim().toUpperCase(); return u === 'UND' ? 'UN' : u; })(),
+      quantidade: Number(p.quantidade) || 1,
+      validade: String(p.validade || '').trim(),
+      observacao: String(p.observacao || '').trim() || undefined,
+    }));
+
+    const invalido = sanitizados.some(p => !p.nome || !['UN', 'CX', 'PCT'].includes(p.unidade) || p.quantidade <= 0);
+    if (invalido) {
+      toast.error('Preencha produto, unidade válida (UN, CX ou PCT) e quantidade > 0 em todos os itens.');
+      return;
+    }
+
+    setSalvandoProdutos(true);
+    try {
+      const antes = parseProdutos(detalheSobra.produtos).map(formatarProdutoHistorico);
+      const depois = sanitizados.map(formatarProdutoHistorico);
+
+      const logs = Array.isArray(detalheSobra.observacoes_log) ? detalheSobra.observacoes_log as ObservacaoLog[] : [];
+      const novoLog: ObservacaoLog = {
+        id: Date.now().toString(),
+        usuarioNome: user.nome || user.email || 'Usuário',
+        usuarioId: user.id,
+        data: format(new Date(), 'dd/MM/yyyy'),
+        hora: format(new Date(), 'HH:mm'),
+        acao: 'Alterou produtos da sobra',
+        texto: `Alteração de produtos. Antes: ${antes.length ? antes.join(' || ') : 'sem produtos'}. Depois: ${depois.length ? depois.join(' || ') : 'sem produtos'}.`,
+      };
+      const novosLogs = [...logs, novoLog];
+
+      const { error } = await supabase
+        .from('protocolos')
+        .update({
+          produtos: sanitizados as unknown as never,
+          observacoes_log: novosLogs as unknown as never,
+        })
+        .eq('id', detalheSobra.id);
+      if (error) throw error;
+
+      await registrarLog({
+        acao: 'edicao',
+        tabela: 'protocolos',
+        registro_id: detalheSobra.numero,
+        registro_dados: { campo: 'produtos', antes, depois },
+        usuario_nome: user.nome || user.email || 'Usuário',
+        usuario_role: user.nivel,
+        usuario_unidade: user.unidade,
+      });
+
+      setDetalheSobra({ ...detalheSobra, produtos: sanitizados, observacoes_log: novosLogs });
+      setSobras(prev => prev.map(s => s.id === detalheSobra.id ? { ...s, produtos: sanitizados, observacoes_log: novosLogs } : s));
+      setEditandoProdutos(false);
+      setProdutosEditados([]);
+      toast.success('Produtos atualizados!');
+    } catch (err) {
+      console.error('Erro ao salvar produtos:', err);
+      toast.error('Erro ao salvar produtos');
+    } finally {
+      setSalvandoProdutos(false);
+    }
+  };
 
   const handleExcluirSobra = async (sobra: SobraProtocolo) => {
     if (!isAdmin) return;
