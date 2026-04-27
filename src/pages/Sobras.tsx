@@ -48,7 +48,31 @@ interface SobraProtocolo {
   created_at: string | null;
   observacoes_log: unknown;
   fotos_protocolo: unknown;
+  produtos: unknown;
 }
+
+interface ProdutoSobra {
+  codigo?: string;
+  nome?: string;
+  unidade?: string;
+  quantidade?: number | string;
+  validade?: string;
+  observacao?: string;
+}
+
+const parseProdutos = (raw: unknown): ProdutoSobra[] => {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw as ProdutoSobra[];
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
 
 const STATUS_OPTIONS = [
   { value: 'todos', label: 'Todos' },
@@ -177,7 +201,7 @@ export default function Sobras() {
     try {
       let query = supabase
         .from('protocolos')
-        .select('id, numero, data, hora, status, causa, mapa, nota_fiscal, codigo_pdv, motorista_nome, motorista_unidade, motorista_codigo, observacao_geral, created_at, observacoes_log, fotos_protocolo', { count: 'exact' })
+        .select('id, numero, data, hora, status, causa, mapa, nota_fiscal, codigo_pdv, motorista_nome, motorista_unidade, motorista_codigo, observacao_geral, created_at, observacoes_log, fotos_protocolo, produtos', { count: 'exact' })
         .eq('tipo_reposicao', 'pos_rota')
         .eq('ativo', true)
         .order('created_at', { ascending: false });
@@ -538,6 +562,34 @@ export default function Sobras() {
                         </span>
                       </div>
 
+                      {/* Produtos informados pelo motorista */}
+                      {(() => {
+                        const produtos = parseProdutos(sobra.produtos);
+                        if (produtos.length === 0) return null;
+                        return (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {produtos.slice(0, 3).map((p, i) => (
+                              <Badge
+                                key={i}
+                                variant="secondary"
+                                className="text-xs font-normal max-w-[280px] truncate"
+                                title={`${p.codigo ? p.codigo + ' - ' : ''}${p.nome || ''} (${p.quantidade ?? '?'} ${p.unidade || ''})`}
+                              >
+                                <Package className="w-3 h-3 mr-1 shrink-0" />
+                                <span className="truncate">
+                                  {p.quantidade ?? '?'} {p.unidade || ''} · {p.nome || p.codigo || 'Produto'}
+                                </span>
+                              </Badge>
+                            ))}
+                            {produtos.length > 3 && (
+                              <Badge variant="secondary" className="text-xs font-normal">
+                                +{produtos.length - 3}
+                              </Badge>
+                            )}
+                          </div>
+                        );
+                      })()}
+
                       {/* Indicadores */}
                       {(fotosCount > 0 || logsCount > 0 || sobra.observacao_geral) && (
                         <div className="flex items-center gap-3 mt-2">
@@ -701,6 +753,40 @@ export default function Sobras() {
                   <p className="text-sm bg-muted/50 rounded-lg p-3">{detalheSobra.observacao_geral}</p>
                 </div>
               )}
+
+              {/* Produtos informados pelo motorista */}
+              {(() => {
+                const produtos = parseProdutos(detalheSobra.produtos);
+                if (produtos.length === 0) return null;
+                return (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                      <Package className="w-3.5 h-3.5" />
+                      Produtos informados ({produtos.length})
+                    </p>
+                    <div className="space-y-1.5">
+                      {produtos.map((p, i) => (
+                        <div
+                          key={i}
+                          className="flex items-start justify-between gap-3 bg-muted/50 rounded-lg p-2.5 text-sm"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{p.nome || 'Produto sem nome'}</p>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                              {p.codigo && <span className="font-mono">Cód {p.codigo}</span>}
+                              {p.validade && <span>Val: {p.validade}</span>}
+                              {p.observacao && <span className="italic">"{p.observacao}"</span>}
+                            </div>
+                          </div>
+                          <Badge variant="outline" className="shrink-0 font-mono">
+                            {p.quantidade ?? '?'} {p.unidade || ''}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Fotos das sobras */}
               {(() => {
