@@ -32,6 +32,7 @@ import { getDirectStorageUrl } from '@/utils/urlHelpers';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { ProdutoAutocomplete } from '@/components/ProdutoAutocomplete';
+import { ConferenciaSobraSection } from '@/components/sobras/ConferenciaSobraSection';
 
 interface SobraProtocolo {
   id: string;
@@ -51,6 +52,13 @@ interface SobraProtocolo {
   observacoes_log: unknown;
   fotos_protocolo: unknown;
   produtos: unknown;
+  protocolo_origem_id: string | null;
+  conferencia_status: string | null;
+  confirmacao_conferente: unknown;
+  destino_final: string | null;
+  observacao_finalizacao: string | null;
+  finalizado_por_nome: string | null;
+  finalizado_em: string | null;
 }
 
 interface ProdutoSobra {
@@ -310,7 +318,7 @@ export default function Sobras() {
     try {
       let query = supabase
         .from('protocolos')
-        .select('id, numero, data, hora, status, causa, mapa, nota_fiscal, codigo_pdv, motorista_nome, motorista_unidade, motorista_codigo, observacao_geral, created_at, observacoes_log, fotos_protocolo, produtos', { count: 'exact' })
+        .select('id, numero, data, hora, status, causa, mapa, nota_fiscal, codigo_pdv, motorista_nome, motorista_unidade, motorista_codigo, observacao_geral, created_at, observacoes_log, fotos_protocolo, produtos, protocolo_origem_id, conferencia_status, confirmacao_conferente, destino_final, observacao_finalizacao, finalizado_por_nome, finalizado_em', { count: 'exact' })
         .eq('tipo_reposicao', 'pos_rota')
         .eq('ativo', true)
         .order('created_at', { ascending: false });
