@@ -1071,6 +1071,41 @@ export default function Sobras() {
                 );
               })()}
 
+              {/* Conferência (apenas para sobras vindas de inversão/avaria) */}
+              {detalheSobra.protocolo_origem_id && (
+                <ConferenciaSobraSection
+                  sobraId={detalheSobra.id}
+                  numero={detalheSobra.numero}
+                  produtos={parseProdutos(detalheSobra.produtos)}
+                  conferenciaStatus={detalheSobra.conferencia_status}
+                  confirmacaoConferente={
+                    (detalheSobra.confirmacao_conferente as Record<string, {
+                      status: 'voltou' | 'parcial' | 'nao_voltou';
+                      quantidade_retornada: number;
+                      foto?: string;
+                      conferente_nome?: string;
+                      conferente_id?: string;
+                      data?: string;
+                      hora?: string;
+                    }> | null) || null
+                  }
+                  destinoFinal={detalheSobra.destino_final}
+                  observacaoFinalizacao={detalheSobra.observacao_finalizacao}
+                  finalizadoPorNome={detalheSobra.finalizado_por_nome}
+                  finalizadoEm={detalheSobra.finalizado_em}
+                  observacoesLog={
+                    Array.isArray(detalheSobra.observacoes_log)
+                      ? (detalheSobra.observacoes_log as ObservacaoLog[])
+                      : []
+                  }
+                  onUpdated={() => {
+                    setDetalheSobra(null);
+                    fetchSobras();
+                    fetchContadores();
+                  }}
+                />
+              )}
+
               {/* Histórico */}
               {Array.isArray(detalheSobra.observacoes_log) && (detalheSobra.observacoes_log as ObservacaoLog[]).length > 0 && (
                 <div>
