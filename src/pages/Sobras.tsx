@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { TablePagination } from '@/components/ui/TablePagination';
-import { Package, RefreshCw, Clock, CheckCircle, AlertTriangle, MapPin, FileText, Truck, Eye, ImageIcon, Warehouse, MessageSquare, Send, Hash, Calendar, Route, Trash2, Pencil, Save, X, Plus, Minus } from 'lucide-react';
+import { Package, RefreshCw, Clock, CheckCircle, AlertTriangle, MapPin, FileText, Truck, Eye, ImageIcon, Warehouse, MessageSquare, Send, Hash, Calendar, Route, Trash2, Pencil, Save, X, Plus, Minus, ShieldCheck } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -648,6 +648,25 @@ export default function Sobras() {
                         <Badge variant="outline" className={`text-xs ${getTipoBadgeColor(sobra.causa)}`}>
                           {getTipoFromCausa(sobra.causa)}
                         </Badge>
+                        {sobra.protocolo_origem_id && (
+                          <Badge
+                            variant="outline"
+                            className={
+                              sobra.conferencia_status === 'finalizado'
+                                ? 'text-xs border-green-500 text-green-600 bg-green-50 dark:bg-green-500/10'
+                                : sobra.conferencia_status === 'confirmado_conferente'
+                                ? 'text-xs border-blue-500 text-blue-600 bg-blue-50 dark:bg-blue-500/10'
+                                : 'text-xs border-amber-500 text-amber-600 bg-amber-50 dark:bg-amber-500/10'
+                            }
+                          >
+                            <ShieldCheck className="w-3 h-3 mr-1" />
+                            {sobra.conferencia_status === 'finalizado'
+                              ? 'Conferência finalizada'
+                              : sobra.conferencia_status === 'confirmado_conferente'
+                              ? 'Aguarda finalização'
+                              : 'Pendente conferente'}
+                          </Badge>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
