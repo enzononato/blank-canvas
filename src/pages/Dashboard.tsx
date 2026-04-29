@@ -84,7 +84,7 @@ export default function Dashboard() {
 
   // Protocolos filtrados por unidade e período
   const protocolosFiltrados = useMemo(() => {
-    let filtered = protocolos.filter(p => !p.oculto && p.tipoReposicao !== 'pos_rota');
+    let filtered = protocolos.filter(p => !p.oculto && p.tipoReposicao !== 'pos_rota' && p.tipoReposicao !== 'troca');
     
     if (!isAdmin) {
       const userUnidades = user?.unidade?.split(',').map(u => u.trim()) || [];
@@ -486,7 +486,7 @@ export default function Dashboard() {
       map[u.nome] = { unidade: u.nome, inversao: 0, avaria: 0, falta: 0 };
     });
     // Contar de TODOS protocolos (sem filtro de unidade selecionada)
-    const todosProtocolos = protocolos.filter(p => !p.oculto && p.tipoReposicao !== 'pos_rota');
+    const todosProtocolos = protocolos.filter(p => !p.oculto && p.tipoReposicao !== 'pos_rota' && p.tipoReposicao !== 'troca');
     todosProtocolos.forEach(p => {
       const unidade = p.unidadeNome || 'Sem Unidade';
       if (!map[unidade]) map[unidade] = { unidade, inversao: 0, avaria: 0, falta: 0 };
