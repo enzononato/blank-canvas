@@ -10,6 +10,8 @@ export interface ImportResult {
   success: boolean;
   total: number;
   inseridos?: number;
+  atualizados?: number;
+  inalterados?: number;
   ignorados?: number;
   error?: string;
 }
