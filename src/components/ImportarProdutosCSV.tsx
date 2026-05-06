@@ -13,8 +13,11 @@ interface ImportarProdutosCSVProps {
   onImportComplete?: () => void;
 }
 
+type StatusImport = 'novo' | 'atualizar' | 'inalterado';
+
 interface ProdutoComStatus extends ProdutoImport {
-  existente: boolean;
+  status: StatusImport;
+  nomeAtual?: string;
 }
 
 const HEADER_VARIATIONS: Record<string, string[]> = {
