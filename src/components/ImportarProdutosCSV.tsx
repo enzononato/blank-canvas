@@ -134,14 +134,22 @@ export function ImportarProdutosCSV({ onImportComplete }: ImportarProdutosCSVPro
         try {
           const { data: existentesData } = await supabase
             .from('produtos')
-            .select('cod');
+            .select('cod, produto');
 
-          const existentesSet = new Set((existentesData || []).map(p => p.cod.trim()));
+          const mapaExistentes = new Map(
+            (existentesData || []).map(p => [p.cod.trim(), (p.produto || '').trim()])
+          );
 
-          const comStatus: ProdutoComStatus[] = parsedProdutos.map(p => ({
-            ...p,
-            existente: existentesSet.has(p.cod.trim()),
-          }));
+          const comStatus: ProdutoComStatus[] = parsedProdutos.map(p => {
+            const cod = p.cod.trim();
+            const nome = p.produto.trim();
+            const nomeAtual = mapaExistentes.get(cod);
+            let status: StatusImport = 'novo';
+            if (nomeAtual !== undefined) {
+              status = nomeAtual === nome ? 'inalterado' : 'atualizar';
+            }
+            return { ...p, status, nomeAtual };
+          });
 
           setProdutos(comStatus);
         } finally {
