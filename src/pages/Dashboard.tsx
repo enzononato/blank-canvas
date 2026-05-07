@@ -357,10 +357,10 @@ export default function Dashboard() {
     return Object.entries(contagem)
       .map(([nome, quantidade], index) => ({ id: `motorista-${index}`, nome, quantidade }))
       .sort((a, b) => b.quantidade - a.quantidade)
-      .slice(0, 10);
+      .slice(0, 5);
   }, [protocolosFiltrados]);
 
-  // TOP 10 Clientes PDVs por código (para buscar apenas os nomes necessários)
+  // TOP 5 Clientes PDVs por código (para buscar apenas os nomes necessários)
   const topClientesPorCodigo = useMemo(() => {
     const contagem: Record<string, number> = {};
     protocolosFiltrados.forEach(p => {
@@ -370,7 +370,7 @@ export default function Dashboard() {
 
     return Object.entries(contagem)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 10);
+      .slice(0, 5);
   }, [protocolosFiltrados]);
 
   // Mapa de código PDV -> nome PDV (somente TOP 10, evitando query em massa)
@@ -498,7 +498,7 @@ export default function Dashboard() {
     return Object.entries(contagem)
       .map(([nome, quantidade], index) => ({ id: `produto-${index}`, nome, quantidade }))
       .sort((a, b) => b.quantidade - a.quantidade)
-      .slice(0, 10);
+      .slice(0, 5);
   }, [protocolosFiltrados]);
 
   // ===== NOVOS GRÁFICOS DE CRUZAMENTO =====
@@ -984,21 +984,21 @@ export default function Dashboard() {
       {/* Rankings + Alertas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <RankingCard
-          title="Top 10 Motoristas"
+          title="Top 5 Motoristas"
           icon={<Users className="text-primary" size={18} />}
           items={topMotoristasReal}
           delay={500}
           variant="primary"
         />
         <RankingCard
-          title="Top 10 Clientes (PDVs)"
+          title="Top 5 Clientes (PDVs)"
           icon={<Building2 className="text-sky-500" size={18} />}
           items={topClientesReal}
           delay={600}
           variant="info"
         />
         <RankingCard
-          title="Top 10 Produtos"
+          title="Top 5 Produtos"
           icon={<Package className="text-emerald-500" size={18} />}
           items={topProdutosReal}
           delay={700}
