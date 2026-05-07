@@ -261,7 +261,7 @@ export function TrocaForm({ representante }: TrocaFormProps) {
         hora: format(agora, 'HH:mm'),
         mapa: '',
         codigoPdv: codigoPdv.trim(),
-        notaFiscal: '',
+        notaFiscal: notaFiscal.trim(),
         motoristaNome: representante.nome,
         unidade: representante.unidade,
         tipoReposicao: 'TROCA',
