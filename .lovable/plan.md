@@ -1,29 +1,15 @@
-## Alterações no formulário de Troca (Portal RN)
+## Objetivo
+No Dashboard, exibir Top 10 (em vez de Top 5) para Motoristas, Clientes (PDVs) e Produtos.
 
-**Arquivo:** `src/components/rn/TrocaForm.tsx`
+## Alterações em `src/pages/Dashboard.tsx`
 
-### 1. Lista de motivos sem números e correção de "Mal Cheio"
-Substituir `CAUSAS_TROCA` para exibir apenas o texto, sem prefixo numérico, e corrigir "Mal Cheio" → "Mal cheiro":
-- Vencido
-- Embalagem Avariada
-- Sabor Alterado
-- Impureza
-- Mal cheiro
-- Sem data de Validade
-- Fora do Prazo Comercial
-- Produto Impróprio
+1. **Linhas 360, 373, 501** — alterar `.slice(0, 5)` para `.slice(0, 10)` nos três rankings (motoristas, clientes/PDVs, produtos).
+   - Linha 347 (`protocolosFiltrados.slice(0, 5)`) **não** será alterada — refere-se a outra listagem (não é ranking).
+2. **Linhas 987, 994, 1001** — atualizar os títulos dos `RankingCard`:
+   - "Top 5 Motoristas" → "Top 10 Motoristas"
+   - "Top 5 Clientes (PDVs)" → "Top 10 Clientes (PDVs)"
+   - "Top 5 Produtos" → "Top 10 Produtos"
 
-Isso afeta tanto o `<Select>` quanto o valor salvo em `causa` no banco e no webhook (passa a ir só o texto limpo).
-
-### 2. Novo campo "NF de origem"
-Adicionar novo state `notaFiscal` com input que aceita apenas dígitos (`onChange` com `replace(/\D/g, '')`), `inputMode="numeric"`, label "NF de origem". Campo opcional (não bloqueia submit).
-
-Posicionar logo abaixo do PDV e antes do Motivo da Troca.
-
-No `insert` do Supabase: passar `nota_fiscal: notaFiscal.trim() || null`.
-
-No payload do webhook n8n: `notaFiscal: notaFiscal.trim()` (hoje vai vazio fixo).
-
-Incluir também na mensagem de WhatsApp gerada (`buildMensagem`) quando preenchido, e em `dadosCriado` para persistir após envio.
-
-Reset no `resetForm`.
+## Observações
+- O componente `RankingCard` já renderiza dinamicamente todos os itens recebidos, então não precisa de alteração.
+- Layout/altura dos cards crescerá naturalmente para acomodar 10 itens.
