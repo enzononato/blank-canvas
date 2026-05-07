@@ -444,6 +444,10 @@ export default function LogsAuditoria() {
             <Truck size={14} />
             Login Motoristas
           </TabsTrigger>
+          <TabsTrigger value="login-rn" className="gap-1.5">
+            <Briefcase size={14} />
+            Login RN
+          </TabsTrigger>
         </TabsList>
 
         {/* Aba Auditoria */}
