@@ -31,7 +31,8 @@ import {
   Phone,
   Truck,
   XCircle,
-  ShieldAlert
+  ShieldAlert,
+  Briefcase
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
