@@ -238,6 +238,15 @@ export default function LogsAuditoria() {
   const [loginStatusFiltro, setLoginStatusFiltro] = useState<string>('todos');
   const [loginTipoFiltro, setLoginTipoFiltro] = useState<string>('todos');
 
+  // RN login logs
+  const [rnLoginLogs, setRnLoginLogs] = useState<RnLoginLog[]>([]);
+  const [totalRnLoginLogs, setTotalRnLoginLogs] = useState(0);
+  const [isLoadingRnLogin, setIsLoadingRnLogin] = useState(false);
+  const [rnLoginSearch, setRnLoginSearch] = useState('');
+  const [rnLoginStatusFiltro, setRnLoginStatusFiltro] = useState<string>('todos');
+  const [rnLoginCurrentPage, setRnLoginCurrentPage] = useState(1);
+  const [rnLoginPageSize, setRnLoginPageSize] = useState(20);
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
