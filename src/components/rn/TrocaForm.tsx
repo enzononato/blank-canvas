@@ -85,6 +85,7 @@ export function TrocaForm({ representante }: TrocaFormProps) {
   const [mensagemCopiada, setMensagemCopiada] = useState(false);
   const [dadosCriado, setDadosCriado] = useState<{
     codigoPdv: string;
+    notaFiscal: string;
     causa: string;
     whatsapp: string;
     email: string;
