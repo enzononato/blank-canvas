@@ -61,6 +61,17 @@ interface MotoristaLoginLog {
   unidade: string | null;
 }
 
+interface RnLoginLog {
+  id: string;
+  created_at: string;
+  identificador: string;
+  sucesso: boolean;
+  erro: string | null;
+  representante_id: string | null;
+  representante_nome: string | null;
+  unidade: string | null;
+}
+
 const getAcaoLabel = (acao: string): string => {
   switch (acao) {
     case 'exclusao':
