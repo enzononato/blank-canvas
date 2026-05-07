@@ -68,6 +68,7 @@ const N8N_WEBHOOK = 'https://n8n.revalle.com.br/webhook/reposicaowpp';
 export function TrocaForm({ representante }: TrocaFormProps) {
   const [codigoPdv, setCodigoPdv] = useState('');
   const [pdvSelecionado, setPdvSelecionado] = useState(false);
+  const [notaFiscal, setNotaFiscal] = useState('');
   const [causa, setCausa] = useState('');
   const [produtos, setProdutos] = useState<ProdutoForm[]>([
     { codigo: '', nome: '', quantidade: 1, unidade: 'UN' },
