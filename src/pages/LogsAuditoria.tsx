@@ -335,12 +335,54 @@ export default function LogsAuditoria() {
     }
   }, [activeTab, loginCurrentPage, loginPageSize, loginStatusFiltro, loginTipoFiltro, loginSearch]);
 
+  // Server-side paginated fetch for RN login logs
+  useEffect(() => {
+    if (activeTab === 'login-rn') {
+      const fetchRnLoginLogs = async () => {
+        setIsLoadingRnLogin(true);
+        try {
+          let query = supabase
+            .from('rn_login_logs')
+            .select('*', { count: 'exact' })
+            .order('created_at', { ascending: false });
+
+          if (rnLoginStatusFiltro === 'sucesso') {
+            query = query.eq('sucesso', true);
+          } else if (rnLoginStatusFiltro === 'falha') {
+            query = query.eq('sucesso', false);
+          }
+          if (rnLoginSearch.trim()) {
+            query = query.or(`identificador.ilike.%${rnLoginSearch}%,representante_nome.ilike.%${rnLoginSearch}%,unidade.ilike.%${rnLoginSearch}%`);
+          }
+
+          const from = (rnLoginCurrentPage - 1) * rnLoginPageSize;
+          const to = from + rnLoginPageSize - 1;
+          query = query.range(from, to);
+
+          const { data, error, count } = await query;
+
+          if (error) throw error;
+          setRnLoginLogs((data as RnLoginLog[]) || []);
+          setTotalRnLoginLogs(count ?? 0);
+        } catch (error) {
+          console.error('Erro ao carregar logs de login RN:', error);
+        } finally {
+          setIsLoadingRnLogin(false);
+        }
+      };
+      fetchRnLoginLogs();
+    }
+  }, [activeTab, rnLoginCurrentPage, rnLoginPageSize, rnLoginStatusFiltro, rnLoginSearch]);
+
   // Server-side pagination — data already filtered and paginated
   const totalPages = Math.ceil(totalLogs / pageSize);
   const paginatedLogs = logs;
 
   const loginTotalPages = Math.ceil(totalLoginLogs / loginPageSize);
   const paginatedLoginLogs = loginLogs;
+
+  const rnLoginTotalPages = Math.ceil(totalRnLoginLogs / rnLoginPageSize);
+  const paginatedRnLoginLogs = rnLoginLogs;
 
   // Reset page when filters change
   useEffect(() => {
@@ -350,6 +392,10 @@ export default function LogsAuditoria() {
   useEffect(() => {
     setLoginCurrentPage(1);
   }, [loginSearch, loginStatusFiltro, loginTipoFiltro, loginPageSize]);
+
+  useEffect(() => {
+    setRnLoginCurrentPage(1);
+  }, [rnLoginSearch, rnLoginStatusFiltro, rnLoginPageSize]);
 
   const formatDate = (dateString: string) => {
     try {
