@@ -317,6 +317,7 @@ export function TrocaForm({ representante }: TrocaFormProps) {
       ``,
       `*Causa:* ${d.causa}`,
       `*Cod. PDV:* ${d.codigoPdv}`,
+      ...(d.notaFiscal ? [`*NF de origem:* ${d.notaFiscal}`] : []),
       ``,
       ...(d.produtos.length > 0
         ? [
