@@ -738,6 +738,125 @@ export default function LogsAuditoria() {
             )}
           </div>
         </TabsContent>
+
+        {/* Aba Login RN */}
+        <TabsContent value="login-rn" className="space-y-3 mt-3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <SearchInput
+              value={rnLoginSearch}
+              onChange={setRnLoginSearch}
+              placeholder="Buscar por CPF, nome ou unidade..."
+              className="flex-1 max-w-md"
+            />
+
+            <Select value={rnLoginStatusFiltro} onValueChange={setRnLoginStatusFiltro}>
+              <SelectTrigger className="w-[140px] h-8 text-xs">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="sucesso">Sucesso</SelectItem>
+                <SelectItem value="falha">Falha</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="bg-card rounded-xl p-4 shadow-md animate-fade-in overflow-x-auto">
+            {isLoadingRnLogin ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : (
+              <>
+                <table className="w-full">
+                  <thead>
+                    <tr className="table-header">
+                      <th className="text-left p-2.5 text-[11px] rounded-tl-lg">Data/Hora</th>
+                      <th className="text-left p-2.5 text-[11px]">Status</th>
+                      <th className="text-left p-2.5 text-[11px]">CPF</th>
+                      <th className="text-left p-2.5 text-[11px]">Representante</th>
+                      <th className="text-left p-2.5 text-[11px]">Unidade</th>
+                      <th className="text-left p-2.5 text-[11px] rounded-tr-lg">Erro</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedRnLoginLogs.map((log) => (
+                      <tr key={log.id} className="border-b border-border hover:bg-muted/30">
+                        <td className="p-2.5">
+                          <span className="inline-flex items-center gap-1 text-muted-foreground text-xs">
+                            <Calendar size={12} />
+                            {formatDate(log.created_at)}
+                          </span>
+                        </td>
+                        <td className="p-2.5">
+                          {log.sucesso ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
+                              <CheckCircle size={10} />
+                              Sucesso
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-destructive/20 text-destructive">
+                              <XCircle size={10} />
+                              Falha
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-2.5 text-xs font-mono font-medium">
+                          {log.identificador}
+                        </td>
+                        <td className="p-2.5">
+                          {log.representante_nome ? (
+                            <span className="inline-flex items-center gap-1 text-xs">
+                              <User size={12} className="text-muted-foreground" />
+                              {log.representante_nome}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className="p-2.5">
+                          {log.unidade ? (
+                            <span className="inline-flex items-center gap-1 text-muted-foreground text-xs">
+                              <MapPin size={12} />
+                              {log.unidade}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className="p-2.5">
+                          {log.erro ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-destructive">
+                              <ShieldAlert size={12} />
+                              {log.erro}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {paginatedRnLoginLogs.length === 0 && (
+                  <div className="text-center py-12 text-muted-foreground">
+                    Nenhum log de login encontrado
+                  </div>
+                )}
+
+                <TablePagination
+                  currentPage={rnLoginCurrentPage}
+                  totalPages={rnLoginTotalPages}
+                  pageSize={rnLoginPageSize}
+                  totalItems={totalRnLoginLogs}
+                  onPageChange={setRnLoginCurrentPage}
+                  onPageSizeChange={setRnLoginPageSize}
+                />
+              </>
+            )}
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   );
