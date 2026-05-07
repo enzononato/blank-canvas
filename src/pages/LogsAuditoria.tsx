@@ -31,7 +31,8 @@ import {
   Phone,
   Truck,
   XCircle,
-  ShieldAlert
+  ShieldAlert,
+  Briefcase
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -57,6 +58,17 @@ interface MotoristaLoginLog {
   erro: string | null;
   motorista_id: string | null;
   motorista_nome: string | null;
+  unidade: string | null;
+}
+
+interface RnLoginLog {
+  id: string;
+  created_at: string;
+  identificador: string;
+  sucesso: boolean;
+  erro: string | null;
+  representante_id: string | null;
+  representante_nome: string | null;
   unidade: string | null;
 }
 
@@ -226,6 +238,15 @@ export default function LogsAuditoria() {
   const [loginStatusFiltro, setLoginStatusFiltro] = useState<string>('todos');
   const [loginTipoFiltro, setLoginTipoFiltro] = useState<string>('todos');
 
+  // RN login logs
+  const [rnLoginLogs, setRnLoginLogs] = useState<RnLoginLog[]>([]);
+  const [totalRnLoginLogs, setTotalRnLoginLogs] = useState(0);
+  const [isLoadingRnLogin, setIsLoadingRnLogin] = useState(false);
+  const [rnLoginSearch, setRnLoginSearch] = useState('');
+  const [rnLoginStatusFiltro, setRnLoginStatusFiltro] = useState<string>('todos');
+  const [rnLoginCurrentPage, setRnLoginCurrentPage] = useState(1);
+  const [rnLoginPageSize, setRnLoginPageSize] = useState(20);
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -314,12 +335,54 @@ export default function LogsAuditoria() {
     }
   }, [activeTab, loginCurrentPage, loginPageSize, loginStatusFiltro, loginTipoFiltro, loginSearch]);
 
+  // Server-side paginated fetch for RN login logs
+  useEffect(() => {
+    if (activeTab === 'login-rn') {
+      const fetchRnLoginLogs = async () => {
+        setIsLoadingRnLogin(true);
+        try {
+          let query = supabase
+            .from('rn_login_logs')
+            .select('*', { count: 'exact' })
+            .order('created_at', { ascending: false });
+
+          if (rnLoginStatusFiltro === 'sucesso') {
+            query = query.eq('sucesso', true);
+          } else if (rnLoginStatusFiltro === 'falha') {
+            query = query.eq('sucesso', false);
+          }
+          if (rnLoginSearch.trim()) {
+            query = query.or(`identificador.ilike.%${rnLoginSearch}%,representante_nome.ilike.%${rnLoginSearch}%,unidade.ilike.%${rnLoginSearch}%`);
+          }
+
+          const from = (rnLoginCurrentPage - 1) * rnLoginPageSize;
+          const to = from + rnLoginPageSize - 1;
+          query = query.range(from, to);
+
+          const { data, error, count } = await query;
+
+          if (error) throw error;
+          setRnLoginLogs((data as RnLoginLog[]) || []);
+          setTotalRnLoginLogs(count ?? 0);
+        } catch (error) {
+          console.error('Erro ao carregar logs de login RN:', error);
+        } finally {
+          setIsLoadingRnLogin(false);
+        }
+      };
+      fetchRnLoginLogs();
+    }
+  }, [activeTab, rnLoginCurrentPage, rnLoginPageSize, rnLoginStatusFiltro, rnLoginSearch]);
+
   // Server-side pagination — data already filtered and paginated
   const totalPages = Math.ceil(totalLogs / pageSize);
   const paginatedLogs = logs;
 
   const loginTotalPages = Math.ceil(totalLoginLogs / loginPageSize);
   const paginatedLoginLogs = loginLogs;
+
+  const rnLoginTotalPages = Math.ceil(totalRnLoginLogs / rnLoginPageSize);
+  const paginatedRnLoginLogs = rnLoginLogs;
 
   // Reset page when filters change
   useEffect(() => {
@@ -329,6 +392,10 @@ export default function LogsAuditoria() {
   useEffect(() => {
     setLoginCurrentPage(1);
   }, [loginSearch, loginStatusFiltro, loginTipoFiltro, loginPageSize]);
+
+  useEffect(() => {
+    setRnLoginCurrentPage(1);
+  }, [rnLoginSearch, rnLoginStatusFiltro, rnLoginPageSize]);
 
   const formatDate = (dateString: string) => {
     try {
@@ -376,6 +443,10 @@ export default function LogsAuditoria() {
           <TabsTrigger value="login-motorista" className="gap-1.5">
             <Truck size={14} />
             Login Motoristas
+          </TabsTrigger>
+          <TabsTrigger value="login-rn" className="gap-1.5">
+            <Briefcase size={14} />
+            Login RN
           </TabsTrigger>
         </TabsList>
 
@@ -662,6 +733,125 @@ export default function LogsAuditoria() {
                   totalItems={totalLoginLogs}
                   onPageChange={setLoginCurrentPage}
                   onPageSizeChange={setLoginPageSize}
+                />
+              </>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Aba Login RN */}
+        <TabsContent value="login-rn" className="space-y-3 mt-3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <SearchInput
+              value={rnLoginSearch}
+              onChange={setRnLoginSearch}
+              placeholder="Buscar por CPF, nome ou unidade..."
+              className="flex-1 max-w-md"
+            />
+
+            <Select value={rnLoginStatusFiltro} onValueChange={setRnLoginStatusFiltro}>
+              <SelectTrigger className="w-[140px] h-8 text-xs">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="sucesso">Sucesso</SelectItem>
+                <SelectItem value="falha">Falha</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="bg-card rounded-xl p-4 shadow-md animate-fade-in overflow-x-auto">
+            {isLoadingRnLogin ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : (
+              <>
+                <table className="w-full">
+                  <thead>
+                    <tr className="table-header">
+                      <th className="text-left p-2.5 text-[11px] rounded-tl-lg">Data/Hora</th>
+                      <th className="text-left p-2.5 text-[11px]">Status</th>
+                      <th className="text-left p-2.5 text-[11px]">CPF</th>
+                      <th className="text-left p-2.5 text-[11px]">Representante</th>
+                      <th className="text-left p-2.5 text-[11px]">Unidade</th>
+                      <th className="text-left p-2.5 text-[11px] rounded-tr-lg">Erro</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedRnLoginLogs.map((log) => (
+                      <tr key={log.id} className="border-b border-border hover:bg-muted/30">
+                        <td className="p-2.5">
+                          <span className="inline-flex items-center gap-1 text-muted-foreground text-xs">
+                            <Calendar size={12} />
+                            {formatDate(log.created_at)}
+                          </span>
+                        </td>
+                        <td className="p-2.5">
+                          {log.sucesso ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
+                              <CheckCircle size={10} />
+                              Sucesso
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-destructive/20 text-destructive">
+                              <XCircle size={10} />
+                              Falha
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-2.5 text-xs font-mono font-medium">
+                          {log.identificador}
+                        </td>
+                        <td className="p-2.5">
+                          {log.representante_nome ? (
+                            <span className="inline-flex items-center gap-1 text-xs">
+                              <User size={12} className="text-muted-foreground" />
+                              {log.representante_nome}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className="p-2.5">
+                          {log.unidade ? (
+                            <span className="inline-flex items-center gap-1 text-muted-foreground text-xs">
+                              <MapPin size={12} />
+                              {log.unidade}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </td>
+                        <td className="p-2.5">
+                          {log.erro ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-destructive">
+                              <ShieldAlert size={12} />
+                              {log.erro}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {paginatedRnLoginLogs.length === 0 && (
+                  <div className="text-center py-12 text-muted-foreground">
+                    Nenhum log de login encontrado
+                  </div>
+                )}
+
+                <TablePagination
+                  currentPage={rnLoginCurrentPage}
+                  totalPages={rnLoginTotalPages}
+                  pageSize={rnLoginPageSize}
+                  totalItems={totalRnLoginLogs}
+                  onPageChange={setRnLoginCurrentPage}
+                  onPageSizeChange={setRnLoginPageSize}
                 />
               </>
             )}

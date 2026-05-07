@@ -666,6 +666,42 @@ export type Database = {
         }
         Relationships: []
       }
+      rn_login_logs: {
+        Row: {
+          created_at: string
+          erro: string | null
+          id: string
+          identificador: string
+          ip_info: string | null
+          representante_id: string | null
+          representante_nome: string | null
+          sucesso: boolean
+          unidade: string | null
+        }
+        Insert: {
+          created_at?: string
+          erro?: string | null
+          id?: string
+          identificador: string
+          ip_info?: string | null
+          representante_id?: string | null
+          representante_nome?: string | null
+          sucesso?: boolean
+          unidade?: string | null
+        }
+        Update: {
+          created_at?: string
+          erro?: string | null
+          id?: string
+          identificador?: string
+          ip_info?: string | null
+          representante_id?: string | null
+          representante_nome?: string | null
+          sucesso?: boolean
+          unidade?: string | null
+        }
+        Relationships: []
+      }
       unidades: {
         Row: {
           cnpj: string | null

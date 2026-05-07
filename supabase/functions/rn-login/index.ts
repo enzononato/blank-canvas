@@ -36,6 +36,11 @@ Deno.serve(async (req) => {
 
     if (fetchError) {
       console.error('[RN-LOGIN] Erro na busca:', fetchError.message)
+      await supabaseAdmin.from('rn_login_logs').insert({
+        identificador: cpfLimpo,
+        sucesso: false,
+        erro: `Erro na busca: ${fetchError.message}`,
+      })
       return new Response(
         JSON.stringify({ success: false, error: 'Erro ao buscar representante. Contate o suporte.' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -43,6 +48,11 @@ Deno.serve(async (req) => {
     }
 
     if (!representante) {
+      await supabaseAdmin.from('rn_login_logs').insert({
+        identificador: cpfLimpo,
+        sucesso: false,
+        erro: 'CPF não encontrado',
+      })
       return new Response(
         JSON.stringify({ success: false, error: 'CPF não encontrado' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -50,11 +60,27 @@ Deno.serve(async (req) => {
     }
 
     if (representante.senha !== senha) {
+      await supabaseAdmin.from('rn_login_logs').insert({
+        identificador: cpfLimpo,
+        sucesso: false,
+        erro: 'Senha incorreta',
+        representante_id: representante.id,
+        representante_nome: representante.nome,
+        unidade: representante.unidade,
+      })
       return new Response(
         JSON.stringify({ success: false, error: 'Senha incorreta' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    await supabaseAdmin.from('rn_login_logs').insert({
+      identificador: cpfLimpo,
+      sucesso: true,
+      representante_id: representante.id,
+      representante_nome: representante.nome,
+      unidade: representante.unidade,
+    })
 
     const { senha: _, ...safeRepresentante } = representante
     return new Response(
