@@ -53,14 +53,14 @@ interface ProdutoForm {
 }
 
 const CAUSAS_TROCA = [
-  '01 - Vencido',
-  '02 - Embalagem Avariada',
-  '03 - Sabor Alterado',
-  '04 - Impureza',
-  '05 - Mal Cheio',
-  '06 - Sem data de Validade',
-  '08 - Fora do Prazo Comercial',
-  '09 - Produto Impróprio',
+  'Vencido',
+  'Embalagem Avariada',
+  'Sabor Alterado',
+  'Impureza',
+  'Mal cheiro',
+  'Sem data de Validade',
+  'Fora do Prazo Comercial',
+  'Produto Impróprio',
 ];
 
 const N8N_WEBHOOK = 'https://n8n.revalle.com.br/webhook/reposicaowpp';
