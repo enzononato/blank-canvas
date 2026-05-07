@@ -53,14 +53,14 @@ interface ProdutoForm {
 }
 
 const CAUSAS_TROCA = [
-  '01 - Vencido',
-  '02 - Embalagem Avariada',
-  '03 - Sabor Alterado',
-  '04 - Impureza',
-  '05 - Mal Cheio',
-  '06 - Sem data de Validade',
-  '08 - Fora do Prazo Comercial',
-  '09 - Produto Impróprio',
+  'Vencido',
+  'Embalagem Avariada',
+  'Sabor Alterado',
+  'Impureza',
+  'Mal cheiro',
+  'Sem data de Validade',
+  'Fora do Prazo Comercial',
+  'Produto Impróprio',
 ];
 
 const N8N_WEBHOOK = 'https://n8n.revalle.com.br/webhook/reposicaowpp';
@@ -68,6 +68,7 @@ const N8N_WEBHOOK = 'https://n8n.revalle.com.br/webhook/reposicaowpp';
 export function TrocaForm({ representante }: TrocaFormProps) {
   const [codigoPdv, setCodigoPdv] = useState('');
   const [pdvSelecionado, setPdvSelecionado] = useState(false);
+  const [notaFiscal, setNotaFiscal] = useState('');
   const [causa, setCausa] = useState('');
   const [produtos, setProdutos] = useState<ProdutoForm[]>([
     { codigo: '', nome: '', quantidade: 1, unidade: 'UN' },
@@ -84,6 +85,7 @@ export function TrocaForm({ representante }: TrocaFormProps) {
   const [mensagemCopiada, setMensagemCopiada] = useState(false);
   const [dadosCriado, setDadosCriado] = useState<{
     codigoPdv: string;
+    notaFiscal: string;
     causa: string;
     whatsapp: string;
     email: string;
@@ -160,6 +162,7 @@ export function TrocaForm({ representante }: TrocaFormProps) {
   const resetForm = () => {
     setCodigoPdv('');
     setPdvSelecionado(false);
+    setNotaFiscal('');
     setCausa('');
     setProdutos([{ codigo: '', nome: '', quantidade: 1, unidade: 'UN' }]);
     setFotos([]);
@@ -206,6 +209,7 @@ export function TrocaForm({ representante }: TrocaFormProps) {
         tipo_reposicao: 'troca',
         causa,
         codigo_pdv: codigoPdv.trim(),
+        nota_fiscal: notaFiscal.trim() || null,
         motorista_id: representante.id,
         motorista_nome: representante.nome,
         motorista_codigo: `RN-${cpfRn}`,
@@ -257,7 +261,7 @@ export function TrocaForm({ representante }: TrocaFormProps) {
         hora: format(agora, 'HH:mm'),
         mapa: '',
         codigoPdv: codigoPdv.trim(),
-        notaFiscal: '',
+        notaFiscal: notaFiscal.trim(),
         motoristaNome: representante.nome,
         unidade: representante.unidade,
         tipoReposicao: 'TROCA',
@@ -281,6 +285,7 @@ export function TrocaForm({ representante }: TrocaFormProps) {
       setNumeroProtocolo(numero);
       setDadosCriado({
         codigoPdv: codigoPdv.trim(),
+        notaFiscal: notaFiscal.trim(),
         causa,
         whatsapp,
         email: emailContato,
@@ -312,6 +317,7 @@ export function TrocaForm({ representante }: TrocaFormProps) {
       ``,
       `*Causa:* ${d.causa}`,
       `*Cod. PDV:* ${d.codigoPdv}`,
+      ...(d.notaFiscal ? [`*NF de origem:* ${d.notaFiscal}`] : []),
       ``,
       ...(d.produtos.length > 0
         ? [
@@ -397,6 +403,20 @@ export function TrocaForm({ representante }: TrocaFormProps) {
             <AlertTriangle className="w-3 h-3" /> Selecione um PDV da lista
           </p>
         )}
+      </div>
+
+      {/* NF de origem */}
+      <div className="space-y-1.5">
+        <Label className="text-xs flex items-center gap-1.5">
+          <FileText className="w-3.5 h-3.5" /> NF de origem
+        </Label>
+        <Input
+          value={notaFiscal}
+          onChange={e => setNotaFiscal(e.target.value.replace(/\D/g, ''))}
+          inputMode="numeric"
+          placeholder="Apenas números"
+          maxLength={20}
+        />
       </div>
 
       {/* Causa */}
