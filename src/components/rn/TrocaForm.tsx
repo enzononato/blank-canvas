@@ -285,6 +285,7 @@ export function TrocaForm({ representante }: TrocaFormProps) {
       setNumeroProtocolo(numero);
       setDadosCriado({
         codigoPdv: codigoPdv.trim(),
+        notaFiscal: notaFiscal.trim(),
         causa,
         whatsapp,
         email: emailContato,
