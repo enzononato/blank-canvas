@@ -405,6 +405,20 @@ export function TrocaForm({ representante }: TrocaFormProps) {
         )}
       </div>
 
+      {/* NF de origem */}
+      <div className="space-y-1.5">
+        <Label className="text-xs flex items-center gap-1.5">
+          <FileText className="w-3.5 h-3.5" /> NF de origem
+        </Label>
+        <Input
+          value={notaFiscal}
+          onChange={e => setNotaFiscal(e.target.value.replace(/\D/g, ''))}
+          inputMode="numeric"
+          placeholder="Apenas números"
+          maxLength={20}
+        />
+      </div>
+
       {/* Causa */}
       <div className="space-y-1.5">
         <Label className="text-xs flex items-center gap-1.5">
