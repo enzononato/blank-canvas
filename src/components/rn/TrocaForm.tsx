@@ -209,6 +209,7 @@ export function TrocaForm({ representante }: TrocaFormProps) {
         tipo_reposicao: 'troca',
         causa,
         codigo_pdv: codigoPdv.trim(),
+        nota_fiscal: notaFiscal.trim() || null,
         motorista_id: representante.id,
         motorista_nome: representante.nome,
         motorista_codigo: `RN-${cpfRn}`,
