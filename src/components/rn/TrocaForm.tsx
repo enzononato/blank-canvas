@@ -162,6 +162,7 @@ export function TrocaForm({ representante }: TrocaFormProps) {
   const resetForm = () => {
     setCodigoPdv('');
     setPdvSelecionado(false);
+    setNotaFiscal('');
     setCausa('');
     setProdutos([{ codigo: '', nome: '', quantidade: 1, unidade: 'UN' }]);
     setFotos([]);
